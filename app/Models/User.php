@@ -9,6 +9,8 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 /**
  * Class User
@@ -28,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
  */
 class User extends Model
 {
+	use HasApiTokens, Notifiable;
 	protected $table = 'users';
 
 	protected $casts = [

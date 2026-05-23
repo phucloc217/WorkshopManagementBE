@@ -8,6 +8,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  * Class Workshop
@@ -25,19 +26,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Workshop extends Model
 {
+	use HasUuids;
 	protected $table = 'workshops';
 	public $incrementing = false;
 	public $timestamps = false;
 
 	protected $casts = [
-		'id' => 'uuid',
-		'workshop_code' => '"char"',
-		'phone' => '"char"',
+		
+		'workshop_code' => 'string',
+		'phone' => 'string',
 		'is_active' => 'bool'
 	];
 
 	protected $fillable = [
 		'workshop_code',
+		'name',
 		'address',
 		'phone',
 		'is_active'
