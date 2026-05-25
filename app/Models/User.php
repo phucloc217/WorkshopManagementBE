@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
 /**
  * Class User
@@ -28,7 +29,7 @@ use Laravel\Sanctum\HasApiTokens;
  *
  * @package App\Models
  */
-class User extends Model
+class User extends Authenticatable
 {
 	use HasApiTokens, Notifiable;
 	protected $table = 'users';
@@ -47,11 +48,16 @@ class User extends Model
 		'password',
 		'remember_token',
 		'is_active',
-		'phone'
+		'phone',
+		'workshop_id'
 	];
 
 	public function task_logs()
 	{
 		return $this->hasMany(TaskLog::class);
+	}
+	public function workshop()
+	{
+		return $this->belongsTo(Workshop::class);
 	}
 }

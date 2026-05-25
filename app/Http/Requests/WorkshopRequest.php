@@ -5,6 +5,9 @@ namespace App\Http\Requests;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Http\Exceptions\HttpResponseException;
+
 class WorkshopRequest extends FormRequest
 {
     /**
@@ -14,6 +17,15 @@ class WorkshopRequest extends FormRequest
     {
         return true;
     }
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(
+            response()->json([
+                'message' => 'Dữ liệu không hợp lệ',
+                'errors' => $validator->errors()
+            ], 422)
+        );
+    }
 
     /**
      * Get the validation rules that apply to the request.
@@ -22,12 +34,17 @@ class WorkshopRequest extends FormRequest
      */
     public function rules(): array
     {
-         $id = $this->route('id') ?? $this->route('workshop')?->id;
+        $id = $this->route('id') ?? $this->route('workshop')?->id;
         return [
             'workshop_code' => [
                 'required',
                 'string',
-                Rule::unique('workshops', 'workshop_code')->ignore($id),
+                Rule::unique('workshops')->ignore($id)->where(function ($query) {
+                    return $query->whereRaw(
+                        'LOWER(workshop_code) = ?',
+                        [strtolower($this->workshop_code)]
+                    );
+                }),
             ],
             'name' => 'required|string',
             'address' => 'nullable|string',

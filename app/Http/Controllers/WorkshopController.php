@@ -32,7 +32,10 @@ class WorkshopController extends Controller
      */
     public function store(WorkshopRequest $request)
     {
-        $workshop = Workshop::create($request->validated());
+        $data = $request->validated();
+
+        $data['workshop_code'] = strtoupper($data['workshop_code']);
+        $workshop = Workshop::create($data);
         return response()->json($workshop, 201);
     }
 
@@ -58,7 +61,7 @@ class WorkshopController extends Controller
     public function update(WorkshopRequest $request, Workshop $workshop)
     {
         $validated = $request->validated();
-
+        $validated['workshop_code'] = strtoupper($validated['workshop_code']);
         $workshop->update($validated);
 
         return response()->json([
