@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-
+use Spatie\Permission\Traits\HasRoles;
 /**
  * Class User
  * 
@@ -31,7 +31,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  */
 class User extends Authenticatable
 {
-	use HasApiTokens, Notifiable;
+	use HasApiTokens, Notifiable, HasRoles;
 	protected $table = 'users';
 
 	protected $casts = [

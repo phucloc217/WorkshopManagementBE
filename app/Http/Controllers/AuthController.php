@@ -20,8 +20,12 @@ class AuthController extends Controller
                 'code' => 200,
                 'message' => 'Đăng nhập thành công',
                 'data' => [
-                    'user' => $user,
-                    'token' => $token
+                    'phone' => $user->phone,
+                    'name' => $user->name,
+                    'roles' => $user->getRoleNames()->toArray(),
+                    // 'permissions' => $user->getAllPermissions()->pluck('name'),
+                    'permissions' => ["*:*:*"],
+                    'accessToken' => $token
                 ]
             ]);
         }
