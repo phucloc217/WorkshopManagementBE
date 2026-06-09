@@ -9,6 +9,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  * Class JobOrder
@@ -33,15 +34,15 @@ use Illuminate\Database\Eloquent\Model;
  */
 class JobOrder extends Model
 {
+	use HasUuids;
 	protected $table = 'job_orders';
 	public $incrementing = false;
 	public $timestamps = false;
 
 	protected $casts = [
-		'id' => 'uuid',
-		'workshop_id' => 'uuid',
-		'vehicle_id' => 'uuid',
-		'customer_id' => 'uuid',
+		'workshop_id' => 'string',
+		'vehicle_id' => 'string',
+		'customer_id' => 'string',
 		'received_date' => 'datetime',
 		'delivered_date' => 'datetime'
 	];

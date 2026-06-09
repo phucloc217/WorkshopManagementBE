@@ -9,6 +9,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  * Class Customer
@@ -24,12 +25,13 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Customer extends Model
 {
+	use HasUuids;
 	protected $table = 'customers';
 	public $incrementing = false;
 	public $timestamps = false;
-
+	
 	protected $casts = [
-		'id' => 'uuid'
+		'id' => 'string'
 	];
 
 	protected $fillable = [

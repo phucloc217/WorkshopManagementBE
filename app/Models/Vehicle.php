@@ -8,6 +8,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 /**
  * Class Vehicle
@@ -24,12 +25,12 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Vehicle extends Model
 {
+	use HasUuids;
 	protected $table = 'vehicles';
 	public $incrementing = false;
 	public $timestamps = false;
-
 	protected $casts = [
-		'id' => 'uuid'
+		'id' => 'string'
 	];
 
 	protected $fillable = [

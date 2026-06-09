@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 // })->middleware('auth:sanctum');
 
 Route::apiResource('workshops', \App\Http\Controllers\WorkshopController::class);
-
+Route::apiResource('job-orders', \App\Http\Controllers\JobOrderController::class);
 Route::apiResource('users', \App\Http\Controllers\UserController::class);
 Route::post('users/{user}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
 Route::post('users/{user}/change-status', [\App\Http\Controllers\UserController::class, 'changeStatus']);
