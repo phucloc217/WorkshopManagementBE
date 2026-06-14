@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\JobOrder;
+use App\Models\Vehicle;
+use App\Models\Customer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class JobOrdercontroller extends Controller
 {
@@ -14,8 +17,9 @@ class JobOrdercontroller extends Controller
     public function index()
     {
         $query = JobOrder::with([
-            'customer:id,name'
-          
+            'customer:id,name',
+            'vehicle:id,motor_number,vin,model',
+
         ])->get();
         return response()->json($query);
     }
@@ -33,7 +37,35 @@ class JobOrdercontroller extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'phone' => 'required',
+            'name' => 'required',
+            'motor_number' => 'required',
+            'description' => 'nullable|string'
+        ]);
+        $customer = Customer::where('phone', $request->phone)->first();
+        if (!$customer) {
+            $customer = Customer::create([
+                '$id' => uniqid(),
+                'name' => $request->name,
+                'phone' => $request->phone,
+            ]);
+        }
+        $vehicle = Vehicle::where('motor_number', $request->motor_number)->first();
+        if (!$vehicle) {
+            $vehicle =  Vehicle::create([
+                '$id' => uniqid(),
+                'motor_number' => $request->motor_number,
+                'vin' => $request->vin,
+            ]);
+        }
+        $request->merge(['vehicle_id' => $vehicle->id]);
+        $request->merge(['customer_id' => $customer->id]);
+        $request['issue_description'] = implode('; ', $request->issue_description);
+        $request['order_no'] = $this->generateOrderNo();
+        $jobOrder = JobOrder::create($request->all());
+
+        return response()->json($jobOrder, 201);
     }
 
     /**
@@ -41,7 +73,11 @@ class JobOrdercontroller extends Controller
      */
     public function show(JobOrder $jobOrder)
     {
-        //
+        return response()->json($jobOrder->load([
+            'customer:id,name,phone',
+            'vehicle:id,motor_number,vin,model',
+            'workshop:id,name',
+        ]));
     }
 
     /**
@@ -66,5 +102,23 @@ class JobOrdercontroller extends Controller
     public function destroy(JobOrder $jobOrder)
     {
         //
+    }
+    private function generateOrderNo(): string
+    {
+        $today = Carbon::now()->format('dmy'); // 090626
+
+        $prefix = "SC/{$today}/";
+
+        $lastOrder = JobOrder::where('order_no', 'like', "{$prefix}%")
+            ->orderByDesc('order_no')
+            ->first();
+
+        if (!$lastOrder) {
+            $sequence = 1;
+        } else {
+            $sequence = (int) substr($lastOrder->order_no, -4) + 1;
+        }
+
+        return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }
