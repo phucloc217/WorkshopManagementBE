@@ -55,7 +55,9 @@ class JobOrder extends Model
 		'overall_status',
 		'issue_description',
 		'received_date',
-		'delivered_date'
+		'delivered_date',
+		'odo',
+		'type'
 	];
 
 	public function workshop()

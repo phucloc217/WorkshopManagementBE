@@ -61,7 +61,9 @@ class JobOrdercontroller extends Controller
         }
         $request->merge(['vehicle_id' => $vehicle->id]);
         $request->merge(['customer_id' => $customer->id]);
-        $request['issue_description'] = implode('; ', $request->issue_description);
+        $request['issue_description'] = $request->type === 'GSM'
+            ? implode(PHP_EOL, $request->issue_description ?? [])
+            : implode('; ', $request->issue_description ?? []);
         $request['order_no'] = $this->generateOrderNo();
         $jobOrder = JobOrder::create($request->all());
 
