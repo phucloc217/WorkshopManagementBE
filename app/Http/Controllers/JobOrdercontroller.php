@@ -19,8 +19,9 @@ class JobOrdercontroller extends Controller
         $query = JobOrder::with([
             'customer:id,name',
             'vehicle:id,motor_number,vin,model',
+            'workshop:id,name'
 
-        ])->get();
+        ])->orderByDesc('created_at')->get();
         return response()->json($query);
     }
 
@@ -61,7 +62,7 @@ class JobOrdercontroller extends Controller
         }
         $request->merge(['vehicle_id' => $vehicle->id]);
         $request->merge(['customer_id' => $customer->id]);
-        $request['issue_description'] = $request->type === 'GSM'
+        $request['issue_description'] = $request->type === 'Xe GSM'
             ? implode(PHP_EOL, $request->issue_description ?? [])
             : implode('; ', $request->issue_description ?? []);
         $request['order_no'] = $this->generateOrderNo();
@@ -123,4 +124,5 @@ class JobOrdercontroller extends Controller
 
         return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+    
 }

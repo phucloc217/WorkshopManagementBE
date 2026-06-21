@@ -35,9 +35,9 @@ class JobTask extends Model
 	public $timestamps = false;
 
 	protected $casts = [
-		'id' => 'uuid',
-		'job_order_id' => 'uuid',
 		'completed_at' => 'datetime',
+		'created_at' => 'datetime',
+		'started_at' => 'datetime',
 		'is_warranty' => 'bool'
 	];
 
@@ -46,7 +46,11 @@ class JobTask extends Model
 		'task_name',
 		'status',
 		'completed_at',
-		'is_warranty'
+		'is_warranty',
+		'created_at',
+		'started_at',
+		'created_by',
+		'started_by'
 	];
 
 	public function job_order()

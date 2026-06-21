@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JobTask;
-use App\Models\JobOrder;
+use App\Models\Service;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 
-class JobTaskController extends Controller
+class ServiceController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        return Service::all();
     }
 
     /**
@@ -36,7 +35,7 @@ class JobTaskController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(JobTask $jobTask)
+    public function show(Service $service)
     {
         //
     }
@@ -44,7 +43,7 @@ class JobTaskController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(JobTask $jobTask)
+    public function edit(Service $service)
     {
         //
     }
@@ -52,7 +51,7 @@ class JobTaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, JobTask $jobTask)
+    public function update(Request $request, Service $service)
     {
         //
     }
@@ -60,15 +59,8 @@ class JobTaskController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(JobTask $jobTask)
+    public function destroy(Service $service)
     {
         //
-    }
-
-    public function getTasksByOrderId($jobOrderId)
-    {
-        $jobOrder = JobOrder::findOrFail($jobOrderId);
-
-        return response()->json($jobOrder->tasks);
     }
 }
