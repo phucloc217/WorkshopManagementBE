@@ -21,6 +21,8 @@ Route::get(
     '/job-orders/{jobOrderId}/parts',
     [\App\Http\Controllers\JobPartController::class, 'getPartsByOrderId']
 );
+Route::post('/job-orders/{id}/parts/import', [\App\Http\Controllers\JobPartController::class, 'import']);
+
 Route::post('users/{user}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
 Route::post('users/{user}/change-status', [\App\Http\Controllers\UserController::class, 'changeStatus']);
 Route::get('/customer/by-phone/{phone}', [\App\Http\Controllers\CustomerController::class, 'findByPhone']);
