@@ -83,4 +83,8 @@ class JobOrder extends Model
 	{
 		return $this->hasMany(JobTask::class, 'job_order_id');
 	}
+	public function parts()
+	{
+		return $this->hasMany(JobPart::class, 'job_order_id');
+	}
 }

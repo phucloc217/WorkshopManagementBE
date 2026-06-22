@@ -2,20 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JobTask;
-use App\Models\JobOrder;
+use App\Models\Part;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\TaskRequest;
 use Illuminate\Http\Request;
 
-class JobTaskController extends Controller
+class PartController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        //
+        return Part::all();
     }
 
     /**
@@ -29,18 +27,15 @@ class JobTaskController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(TaskRequest $request)
+    public function store(Request $request)
     {
-        $data = $request->validated();
-        $data['created_by'] = auth()->id();
-        $data['status'] = "Mới Tạo";
-        return JobTask::create($data);
+        //
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(JobTask $jobTask)
+    public function show(Part $part)
     {
         //
     }
@@ -48,7 +43,7 @@ class JobTaskController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(JobTask $jobTask)
+    public function edit(Part $part)
     {
         //
     }
@@ -56,7 +51,7 @@ class JobTaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, JobTask $jobTask)
+    public function update(Request $request, Part $part)
     {
         //
     }
@@ -64,15 +59,8 @@ class JobTaskController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(JobTask $jobTask)
+    public function destroy(Part $part)
     {
         //
-    }
-
-    public function getTasksByOrderId($jobOrderId)
-    {
-        $jobOrder = JobOrder::findOrFail($jobOrderId);
-
-        return response()->json($jobOrder->tasks);
     }
 }

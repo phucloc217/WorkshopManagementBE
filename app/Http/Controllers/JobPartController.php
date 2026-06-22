@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\JobTask;
+use App\Models\JobPart;
 use App\Models\JobOrder;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\TaskRequest;
+use App\Http\Requests\JobPartRequest;
 use Illuminate\Http\Request;
 
-class JobTaskController extends Controller
+class JobPartController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -29,18 +29,17 @@ class JobTaskController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(TaskRequest $request)
+    public function store(JobPartRequest $request)
     {
         $data = $request->validated();
         $data['created_by'] = auth()->id();
-        $data['status'] = "Mới Tạo";
-        return JobTask::create($data);
+        return JobPart::create($data);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(JobTask $jobTask)
+    public function show(JobPart $jobPart)
     {
         //
     }
@@ -48,7 +47,7 @@ class JobTaskController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(JobTask $jobTask)
+    public function edit(JobPart $jobPart)
     {
         //
     }
@@ -56,7 +55,7 @@ class JobTaskController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, JobTask $jobTask)
+    public function update(Request $request, JobPart $jobPart)
     {
         //
     }
@@ -64,15 +63,18 @@ class JobTaskController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(JobTask $jobTask)
+    public function destroy(JobPart $jobPart)
     {
         //
     }
-
-    public function getTasksByOrderId($jobOrderId)
+    public function getPartsByOrderId($jobOrderId)
     {
         $jobOrder = JobOrder::findOrFail($jobOrderId);
 
-        return response()->json($jobOrder->tasks);
+        $parts = JobPart::with('part')
+            ->where('job_order_id', $jobOrderId)
+            ->get();
+
+        return response()->json($parts);
     }
 }
