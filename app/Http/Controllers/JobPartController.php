@@ -67,7 +67,19 @@ class JobPartController extends Controller
      */
     public function destroy(JobPart $jobPart)
     {
-        //
+        if ($jobPart->qty_issued !== 0) {
+            return response()->json([
+                'message' => 'Chỉ được các linh kiện chưa nhận từ kho'
+            ], 422);
+        }
+
+
+        $jobPart->delete();
+
+
+        return response()->json([
+            'message' => 'Xóa linh kiện thành công.'
+        ]);
     }
     public function getPartsByOrderId($jobOrderId)
     {

@@ -46,6 +46,7 @@ class JobTask extends Model
 		'task_name',
 		'status',
 		'completed_at',
+		'completed_by',
 		'is_warranty',
 		'created_at',
 		'started_at',
@@ -53,7 +54,7 @@ class JobTask extends Model
 		'started_by'
 	];
 
-	public function job_order()
+	public function jobOrder()
 	{
 		return $this->belongsTo(JobOrder::class);
 	}
@@ -61,5 +62,17 @@ class JobTask extends Model
 	public function task_logs()
 	{
 		return $this->hasMany(TaskLog::class);
+	}
+	public function createdBy()
+	{
+		return $this->belongsTo(User::class, 'created_by');
+	}
+	public function startedBy()
+	{
+		return $this->belongsTo(User::class, 'started_by');
+	}
+	public function completedBy()
+	{
+		return $this->belongsTo(User::class, 'completed_by');
 	}
 }

@@ -6,23 +6,47 @@ use App\Models\JobOrder;
 use App\Models\Vehicle;
 use App\Models\Customer;
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class JobOrdercontroller extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $query = JobOrder::with([
-            'customer:id,name',
-            'vehicle:id,motor_number,vin,model',
-            'workshop:id,name'
+        $query = JobOrder::query()
+            ->select([
+                'id',
+                'order_no',
+                'customer_id',
+                'vehicle_id',
+                'workshop_id',
+                'overall_status',
+                'type',
+                'issue_description',
+                'created_at'
+            ])
+            ->with([
+                'customer:id,name',
+                'vehicle:id,motor_number,vin,model',
+                'workshop:id,name'
+            ])
+            ->withCount('tasks')
+            ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
+            ->when($request->statuses, fn($q) => $q->whereIn('overall_status', $request->statuses))
+            ->when($request->has_parts, function ($q) {
+                $q->whereHas('parts', function ($q) {
+                    $q->whereColumn('qty_issued', '<', 'qty');
+                });
+            })
+            ->latest();
 
-        ])->orderByDesc('created_at')->get();
-        return response()->json($query);
+        return response()->json(
+            $query->paginate($request->per_page ?? 20)
+        );
     }
 
     /**
@@ -39,50 +63,108 @@ class JobOrdercontroller extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'phone' => 'required',
-            'name' => 'required',
+            'phone'        => 'required',
+            'name'         => 'required',
             'motor_number' => 'required',
-            'description' => 'nullable|string'
+            'workshop_id'  => 'required|exists:workshops,id',
+            'type'         => 'required',
+            'vin'          => 'nullable|string',
+            'odo'          => 'nullable|integer',
+            'description'  => 'nullable|string'
         ]);
-        $customer = Customer::where('phone', $request->phone)->first();
-        if (!$customer) {
-            $customer = Customer::create([
-                '$id' => uniqid(),
-                'name' => $request->name,
-                'phone' => $request->phone,
-            ]);
-        }
-        $vehicle = Vehicle::where('motor_number', $request->motor_number)->first();
-        if (!$vehicle) {
-            $vehicle =  Vehicle::create([
-                '$id' => uniqid(),
-                'motor_number' => $request->motor_number,
-                'vin' => $request->vin,
-            ]);
-        }
-        $request->merge(['vehicle_id' => $vehicle->id]);
-        $request->merge(['customer_id' => $customer->id]);
-        $request['issue_description'] = $request->type === 'Xe GSM'
-            ? implode(PHP_EOL, $request->issue_description ?? [])
-            : implode('; ', $request->issue_description ?? []);
-        $request['order_no'] = $this->generateOrderNo();
-        $jobOrder = JobOrder::create($request->all());
+        DB::transaction(function () use ($request) {
 
-        return response()->json($jobOrder, 201);
+            $customer = Customer::firstOrCreate(
+                ['phone' => $request->phone],
+                ['name'  => $request->name]
+            );
+            $vehicle = Vehicle::firstOrCreate(
+                ['motor_number' => $request->motor_number],
+                ['vin'          => $request->vin]
+            );
+            $request->merge(['vehicle_id' => $vehicle->id]);
+            $request->merge(['customer_id' => $customer->id]);
+            $request['issue_description'] = $request->type === 'Xe GSM'
+                ? implode(PHP_EOL, $request->issue_description ?? [])
+                : implode('; ', $request->issue_description ?? []);
+            // $request['order_no'] = $this->generateOrderNo();
+            // $request['created_by'] = auth()->id();
+            $jobOrder = JobOrder::create([
+                'vehicle_id'        => $vehicle->id,
+                'customer_id'       => $customer->id,
+                'workshop_id'       => $request->workshop_id,
+                'type'              => $request->type,
+                'issue_description' => $request['issue_description'],
+                'order_no'          => $this->generateOrderNo(),
+                'created_by'        => auth()->id(),
+                'odo'               => $request->odo,
+            ]);
+
+            return response()->json($jobOrder, 201);
+        });
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(JobOrder $jobOrder)
+    public function show(string $id)
     {
-        return response()->json($jobOrder->load([
+        $jobOrder = JobOrder::with([
             'customer:id,name,phone',
             'vehicle:id,motor_number,vin,model',
             'workshop:id,name',
-        ]));
-    }
+            'tasks' => fn($q) => $q->orderBy('created_at'),
+            'createdBy:id,name'
+        ])->findOrFail($id);
 
+        // Tạo log từ các trường có sẵn
+        $logs = collect();
+
+        // Log tạo phiếu
+        $logs->push([
+            'time'       => $jobOrder->created_at?->format('d/m/Y H:i'),
+            'created_by' => $jobOrder->createdBy?->name,
+            'content'    => 'Tạo phiếu sửa chữa'
+        ]);
+
+        // Log từng task
+        foreach ($jobOrder->tasks as $task) {
+            $logs->push([
+                'time'       => $task->created_at?->format('d/m/Y H:i'),
+                'created_by' => $task->createdBy?->name,
+                'content'    => "Tạo công việc: {$task->task_name}"
+            ]);
+
+            if ($task->started_at) {
+                $logs->push([
+                    'time'       => $task->started_at?->format('d/m/Y H:i'),
+                    'created_by' => $task->startedBy?->name,
+                    'content'    => "Bắt đầu: {$task->task_name}"
+                ]);
+            }
+
+            if ($task->completed_at) {
+                $logs->push([
+                    'time'       => $task->completed_at?->format('d/m/Y H:i'),
+                    'created_by' => $task->completedBy?->name,
+                    'content'    => "Hoàn thành: {$task->task_name}"
+                ]);
+            }
+        }
+
+        //Thời gian hoàn thành task
+        if ($jobOrder->completed_at) {
+            $logs->push([
+                'time'       => $jobOrder->completed_at?->format('d/m/Y H:i'),
+                'created_by' => $jobOrder->completedBy?->name,
+                'content'    => 'Hoàn thành sửa chữa'
+            ]);
+        }
+        return response()->json([
+            ...$jobOrder->toArray(),
+            'logs' => $logs->sortByDesc('time')->values()
+        ]);
+    }
     /**
      * Show the form for editing the specified resource.
      */
@@ -96,7 +178,28 @@ class JobOrdercontroller extends Controller
      */
     public function update(Request $request, JobOrder $jobOrder)
     {
-        //
+        $request->validate([
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'vehicle.vin' => 'nullable|string|max:100',
+            'vehicle.model' => 'nullable|string|max:255',
+            'issue_description' => 'nullable|string'
+        ]);
+
+        DB::transaction(function () use ($request, $jobOrder) {
+
+            $vehicle = Vehicle::findOrFail($request->vehicle_id);
+
+            $vehicle->update([
+                'vin' => $request->input('vehicle.vin'),
+                'model' => $request->input('vehicle.model')
+            ]);
+
+            $jobOrder->update([
+                'issue_description' => $request->issue_description
+            ]);
+        });
+
+        return $jobOrder->fresh();
     }
 
     /**
@@ -124,5 +227,34 @@ class JobOrdercontroller extends Controller
 
         return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
-    
+    public function finish(JobOrder $jobOrder)
+    {
+        // Kiểm tra còn công việc chưa hoàn thành không
+        $hasUnfinishedTask = $jobOrder->tasks()
+            ->where('status', '!=', 'Hoàn Thành')
+            ->exists();
+
+        if ($hasUnfinishedTask) {
+            return response()->json([
+                'message' => 'Vẫn còn công việc chưa hoàn thành.'
+            ], 422);
+        }
+
+        // Kiểm tra đã hoàn thành rồi
+        if ($jobOrder->overall_status === 'Hoàn Thành') {
+            return response()->json([
+                'message' => 'Phiếu sửa chữa đã được hoàn thành.'
+            ], 422);
+        }
+
+        $jobOrder->update([
+            'overall_status' => 'Hoàn Thành',
+            'completed_at' => now(),
+            'completed_by' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'message' => 'Kết thúc sửa chữa thành công.'
+        ]);
+    }
 }

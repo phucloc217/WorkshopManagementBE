@@ -44,7 +44,9 @@ class JobOrder extends Model
 		'vehicle_id' => 'string',
 		'customer_id' => 'string',
 		'received_date' => 'datetime',
-		'delivered_date' => 'datetime'
+		'delivered_date' => 'datetime',
+		'created_at' => 'datetime',
+		'completed_at' => 'datetime'
 	];
 
 	protected $fillable = [
@@ -56,6 +58,11 @@ class JobOrder extends Model
 		'issue_description',
 		'received_date',
 		'delivered_date',
+		'completed_at',
+		'completed_by',
+		'delivered_by',
+		'created_by',
+		'created_at',
 		'odo',
 		'type'
 	];
@@ -86,5 +93,13 @@ class JobOrder extends Model
 	public function parts()
 	{
 		return $this->hasMany(JobPart::class, 'job_order_id');
+	}
+	public function createdBy()
+	{
+		return $this->belongsTo(User::class, 'created_by');
+	}
+	public function completedBy()
+	{
+		return $this->belongsTo(User::class, 'completed_by');
 	}
 }
