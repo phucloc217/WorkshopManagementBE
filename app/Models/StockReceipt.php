@@ -44,4 +44,11 @@ class StockReceipt extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+    public function scopeAccessibleBy($query, $user)
+    {
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+        return $query->whereIn('warehouse_id', $user->warehouseIds());
+    }
 }

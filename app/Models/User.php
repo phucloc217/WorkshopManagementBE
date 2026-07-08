@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Spatie\Permission\Traits\HasRoles;
+
 /**
  * Class User
  * 
@@ -59,5 +60,36 @@ class User extends Authenticatable
 	public function workshop()
 	{
 		return $this->belongsTo(Workshop::class);
+	}
+	public function workshops()
+	{
+		return $this->belongsToMany(Workshop::class, 'user_workshops')
+			->withPivot('id');
+	}
+
+	public function warehouses()
+	{
+		return $this->belongsToMany(Warehouse::class, 'user_warehouses')
+			->withPivot('id');
+	}
+	// Helper methods
+	public function workshopIds(): array
+	{
+		return $this->workshops()->pluck('workshops.id')->toArray();
+	}
+
+	public function warehouseIds(): array
+	{
+		return $this->warehouses()->pluck('warehouses.id')->toArray();
+	}
+
+	public function canAccessWorkshop(string $workshopId): bool
+	{
+		return $this->hasRole('admin') || in_array($workshopId, $this->workshopIds());
+	}
+
+	public function canAccessWarehouse(string $warehouseId): bool
+	{
+		return $this->hasRole('admin') || in_array($warehouseId, $this->warehouseIds());
 	}
 }

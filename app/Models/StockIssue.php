@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -24,7 +25,7 @@ class StockIssue extends Model
         'status',
         'created_by',
         'created_at',
-        
+
     ];
 
     public function warehouse()
@@ -50,5 +51,12 @@ class StockIssue extends Model
     public function receivedBy()
     {
         return $this->belongsTo(User::class, 'received_by');
+    }
+    public function scopeAccessibleBy($query, $user)
+    {
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+        return $query->whereIn('warehouse_id', $user->warehouseIds());
     }
 }

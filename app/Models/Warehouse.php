@@ -27,4 +27,11 @@ class Warehouse extends Model
 	{
 		return $this->hasMany(WarehouseParts::class);
 	}
+	public function scopeAccessibleBy($query, $user)
+	{
+		if ($user->hasRole('admin')) {
+			return $query;
+		}
+		return $query->whereIn('id', $user->warehouseIds());
+	}
 }

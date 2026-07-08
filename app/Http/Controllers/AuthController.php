@@ -23,8 +23,9 @@ class AuthController extends Controller
                     'phone' => $user->phone,
                     'name' => $user->name,
                     'roles' => $user->getRoleNames()->toArray(),
-                    // 'permissions' => $user->getAllPermissions()->pluck('name'),
-                    'permissions' => ["*:*:*"],
+                    'permissions' => $user->hasRole('admin')
+                        ? ["*:*:*"]
+                        : $user->getAllPermissions()->pluck('name')->toArray(),
                     'accessToken' => $token
                 ]
             ]);
