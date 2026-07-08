@@ -53,6 +53,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('stock-transfers', \App\Http\Controllers\StockTransferController::class);
     Route::post('stock-transfers/{stockTransfer}/transfer', [\App\Http\Controllers\StockTransferController::class, 'transfer']);
     Route::post('stock-transfers/{stockTransfer}/receive', [\App\Http\Controllers\StockTransferController::class, 'receive']);
+    Route::apiResource('roles', \App\Http\Controllers\RoleController::class);
+
+    Route::get('permissions', [\App\Http\Controllers\RoleController::class, 'permissions']);
+    Route::get('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'rolePermissions']);
+    Route::post('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'syncPermissions']);
 });
 
 //Kho

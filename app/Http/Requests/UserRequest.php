@@ -31,6 +31,7 @@ class UserRequest extends FormRequest
                 'string',
                 Rule::unique('users', 'phone')->ignore($id),
             ],
+            'password' => 'nullable|string|min:6',
             'name' => 'required|string',
             'is_active' => 'boolean',
             'workshop_id' => 'exists:workshops,id'
