@@ -7,13 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 
 class Part extends Model
 {
-    use HasUuids;
-    protected $table = 'parts';
+	use HasUuids;
+	protected $table = 'parts';
 	public $incrementing = false;
 	public $timestamps = false;
 
 	protected $casts = [
-		
+
 		'part_code' => 'string'
 	];
 
@@ -22,4 +22,8 @@ class Part extends Model
 		'description',
 		'min_qty'
 	];
+	public function warehouseParts()
+	{
+		return $this->hasMany(WarehouseParts::class);
+	}
 }
