@@ -58,10 +58,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('users/{user}/roles', [\App\Http\Controllers\UserController::class, 'userRoles']);
     Route::post('users/{user}/roles', [\App\Http\Controllers\UserController::class, 'syncRoles']);
-    
+
     Route::get('permissions', [\App\Http\Controllers\RoleController::class, 'permissions']);
     Route::get('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'rolePermissions']);
     Route::post('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'syncPermissions']);
     //Kho
     Route::get('inventory', [\App\Http\Controllers\WarehouseInventoryController::class, 'index']);
+
+    Route::get('login-logs', [\App\Http\Controllers\LoginLogController::class, 'index']);
+    Route::delete('login-logs/clear', [\App\Http\Controllers\LoginLogController::class, 'clearAll']);
+    Route::post('login-logs/batch-delete', [\App\Http\Controllers\LoginLogController::class, 'batchDelete']);
 });
