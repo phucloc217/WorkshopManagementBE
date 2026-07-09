@@ -119,7 +119,7 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-         if (!$user) {
+        if (!$user) {
             return response()->json([
                 'message' => 'Người dùng không tồn tại'
             ], 404);
@@ -130,5 +130,28 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Người dùng đã được xóa thành công'
         ]);
+    }
+
+    // Lấy roles hiện tại của user
+    public function userRoles(User $user)
+    {
+        return response()->json([
+            'code' => 200,
+            'data' => $user->roles->pluck('id')
+        ]);
+    }
+
+    // Gán roles cho user
+    public function syncRoles(Request $request, User $user)
+    {
+        $request->validate([
+            'role_ids'   => 'array',
+            'role_ids.*' => 'exists:roles,id',
+        ]);
+
+        $roles = \Spatie\Permission\Models\Role::whereIn('id', $request->role_ids ?? [])->get();
+        $user->syncRoles($roles);
+
+        return response()->json(['code' => 200, 'message' => 'Cập nhật vai trò thành công']);
     }
 }

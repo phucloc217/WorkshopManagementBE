@@ -32,6 +32,7 @@ Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\Veh
 Route::post('login', [\App\Http\Controllers\AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [\App\Http\Controllers\AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
+    Route::post('stock-receipts/import', [\App\Http\Controllers\StockReceiptController::class, 'import']);
     Route::get('inventory/history', [\App\Http\Controllers\WarehouseInventoryController::class, 'importExportHistory']);
     Route::apiResource('stock-issues', \App\Http\Controllers\StockIssueController::class);
     Route::post('stock-issues/{stockIssue}/confirm', [\App\Http\Controllers\StockIssueController::class, 'confirm']);
@@ -55,10 +56,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('stock-transfers/{stockTransfer}/receive', [\App\Http\Controllers\StockTransferController::class, 'receive']);
     Route::apiResource('roles', \App\Http\Controllers\RoleController::class);
 
+    Route::get('users/{user}/roles', [\App\Http\Controllers\UserController::class, 'userRoles']);
+    Route::post('users/{user}/roles', [\App\Http\Controllers\UserController::class, 'syncRoles']);
+    
     Route::get('permissions', [\App\Http\Controllers\RoleController::class, 'permissions']);
     Route::get('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'rolePermissions']);
     Route::post('roles/{role}/permissions', [\App\Http\Controllers\RoleController::class, 'syncPermissions']);
+    //Kho
+    Route::get('inventory', [\App\Http\Controllers\WarehouseInventoryController::class, 'index']);
 });
-
-//Kho
-Route::get('inventory', [\App\Http\Controllers\WarehouseInventoryController::class, 'index']);

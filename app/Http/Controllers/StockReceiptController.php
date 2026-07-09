@@ -157,4 +157,73 @@ class StockReceiptController extends Controller
 
         return $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
     }
+    public function import(Request $request)
+    {
+        $request->validate([
+            'warehouse_id'      => 'required|exists:warehouses,id',
+            'import_from'       => 'nullable|string',
+            'document'          => 'nullable|string',
+            'note'              => 'nullable|string',
+            'rows'              => 'required|array|min:1',
+            'rows.*.part_code'  => 'required|string',
+            'rows.*.qty'        => 'required|integer|min:1',
+        ]);
+
+        $errors = [];
+        $items = [];
+
+        foreach ($request->rows as $index => $row) {
+            $part = \App\Models\Part::where('part_code', $row['part_code'])->first();
+
+            if (!$part) {
+                $errors[] = [
+                    'row'     => $index + 2, // +2 vì dòng 1 là header
+                    'part_code' => $row['part_code'],
+                    'message' => "Không tìm thấy linh kiện {$row['part_code']}"
+                ];
+                continue;
+            }
+
+            $items[] = [
+                'part_id' => $part->id,
+                'qty'     => $row['qty'],
+            ];
+        }
+
+        if (empty($items)) {
+            return response()->json([
+                'message' => 'Không có dòng hợp lệ nào để nhập',
+                'errors'  => $errors
+            ], 422);
+        }
+
+        $receipt = DB::transaction(function () use ($request, $items) {
+            $receipt = StockReceipt::create([
+                'warehouse_id' => $request->warehouse_id,
+                'receipt_no'   => $this->generateReceiptNo(),
+                'note'         => $request->note,
+                'import_from'  => $request->import_from,
+                'document'     => $request->document,
+                'status'       => 'Mới Tạo',
+                'created_by'   => auth()->id(),
+                'created_at'   => now(),
+            ]);
+
+            foreach ($items as $item) {
+                StockReceiptItem::create([
+                    'stock_receipt_id' => $receipt->id,
+                    'part_id'          => $item['part_id'],
+                    'qty'              => $item['qty'],
+                ]);
+            }
+
+            return $receipt;
+        });
+
+        return response()->json([
+            'message' => 'Import thành công',
+            'data'    => $receipt->load('items.part'),
+            'errors'  => $errors
+        ], 201);
+    }
 }
