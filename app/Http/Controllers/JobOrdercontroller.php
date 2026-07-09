@@ -17,36 +17,47 @@ class JobOrdercontroller extends Controller
      */
     public function index(Request $request)
     {
-        $query = JobOrder::query()
-            ->select([
-                'id',
-                'order_no',
-                'customer_id',
-                'vehicle_id',
-                'workshop_id',
-                'overall_status',
-                'type',
-                'issue_description',
-                'created_at'
-            ])
-            ->with([
-                'customer:id,name',
-                'vehicle:id,motor_number,vin,model',
-                'workshop:id,name'
-            ])
-            ->withCount('tasks')
-            ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
-            ->when($request->statuses, fn($q) => $q->whereIn('overall_status', $request->statuses))
-            ->when($request->has_parts, function ($q) {
-                $q->whereHas('parts', function ($q) {
-                    $q->whereColumn('qty_issued', '<', 'qty');
-                });
-            })
-            ->latest();
+        try {
+            $query = JobOrder::query()
+                ->select([
+                    'id',
+                    'order_no',
+                    'customer_id',
+                    'vehicle_id',
+                    'workshop_id',
+                    'overall_status',
+                    'type',
+                    'issue_description',
+                    'created_at'
+                ])
+                ->with([
+                    'customer:id,name',
+                    'vehicle:id,motor_number,vin,model',
+                    'workshop:id,name'
+                ])
+                ->withCount('tasks')
+                ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
+                ->when($request->statuses, fn($q) => $q->whereIn('overall_status', $request->statuses))
+                ->when($request->has_parts, function ($q) {
+                    $q->whereHas('parts', function ($q) {
+                        $q->whereColumn('qty_issued', '<', 'qty');
+                    });
+                })
+                ->latest();
 
-        return response()->json(
-            $query->paginate($request->per_page ?? 20)
-        );
+            return response()->json(
+                $query->paginate($request->per_page ?? 20)
+            );
+        } catch (\Throwable $e) {
+            \Log::error('JobOrder index error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Không thể tải danh sách phiếu sửa chữa',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
     }
 
     /**
