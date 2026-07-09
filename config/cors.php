@@ -19,8 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [  'http://localhost:8848',
-        'http://localhost:5173'],
+    'allowed_origins' => [
+        'http://localhost:8848',
+        'http://localhost:5173',
+        'https://motodesk.truonghien.vn'
+    ],
 
     'allowed_origins_patterns' => [],
 
