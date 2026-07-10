@@ -43,6 +43,17 @@ class JobOrdercontroller extends Controller
                         $q->whereColumn('qty_issued', '<', 'qty');
                     });
                 })
+                ->when($request->search, function ($q) use ($request) {
+                    $search = $request->search;
+                    $q->where(function ($q) use ($search) {
+                        $q->where('order_no', 'ILIKE', "%{$search}%")
+                            ->orWhereHas('customer', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"))
+                            ->orWhereHas('vehicle', function ($q) use ($search) {
+                                $q->where('motor_number', 'ILIKE', "%{$search}%")
+                                    ->orWhere('vin', 'ILIKE', "%{$search}%");
+                            });
+                    });
+                })
                 ->latest();
 
             return response()->json(
@@ -266,6 +277,67 @@ class JobOrdercontroller extends Controller
 
         return response()->json([
             'message' => 'Kết thúc sửa chữa thành công.'
+        ]);
+    }
+    // Giao xe 1 phiếu
+    public function deliver(JobOrder $jobOrder)
+    {
+        if ($jobOrder->overall_status !== 'Hoàn Thành') {
+            return response()->json([
+                'message' => 'Chỉ giao được xe đã hoàn thành sửa chữa'
+            ], 422);
+        }
+
+        $jobOrder->update([
+            'overall_status' => 'Đã Giao Xe',
+            'delivered_date' => now(),
+            'delivered_by'   => auth()->id(),
+        ]);
+
+        return response()->json(['message' => 'Giao xe thành công']);
+    }
+
+    // Import danh sách xe đã giao từ Excel (theo biển số hoặc mã phiếu)
+    public function importDelivered(Request $request)
+    {
+        $request->validate([
+            'rows'              => 'required|array|min:1',
+            'rows.*.identifier' => 'required|string', // biển số hoặc order_no
+        ]);
+
+        $errors = [];
+        $success = 0;
+
+        foreach ($request->rows as $index => $row) {
+            $identifier = trim($row['identifier']);
+
+            $jobOrder = JobOrder::where('order_no', $identifier)
+                ->orWhereHas('vehicle', fn($q) => $q->where('motor_number', $identifier))
+                ->where('overall_status', 'Hoàn Thành')
+                ->latest('created_at')
+                ->first();
+
+            if (!$jobOrder) {
+                $errors[] = [
+                    'row'        => $index + 2,
+                    'identifier' => $identifier,
+                    'message'    => "Không tìm thấy phiếu hoàn thành cho '{$identifier}'"
+                ];
+                continue;
+            }
+
+            $jobOrder->update([
+                'overall_status' => 'Đã Giao Xe',
+                'delivered_date' => now(),
+                'delivered_by'   => auth()->id(),
+            ]);
+            $success++;
+        }
+
+        return response()->json([
+            'message' => "Đã giao {$success} xe",
+            'success' => $success,
+            'errors'  => $errors
         ]);
     }
 }

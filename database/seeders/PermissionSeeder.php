@@ -20,6 +20,7 @@ class PermissionSeeder extends Seeder
             'repair.update',
             'repair.delete',
             'repair.finish',
+            'repair.deliver',
 
             // Nhập kho
             'stock-receipt.view',
