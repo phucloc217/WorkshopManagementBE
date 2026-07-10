@@ -68,7 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('login-logs', [\App\Http\Controllers\LoginLogController::class, 'index']);
     Route::delete('login-logs/clear', [\App\Http\Controllers\LoginLogController::class, 'clearAll']);
     Route::post('login-logs/batch-delete', [\App\Http\Controllers\LoginLogController::class, 'batchDelete']);
+    Route::post('job-orders/import-delivered', [\App\Http\Controllers\JobOrderController::class, 'importDelivered']);
+    Route::post('job-orders/{jobOrder}/deliver', [\App\Http\Controllers\JobOrderController::class, 'deliver']);
+    Route::get('warranty-orders', [\App\Http\Controllers\JobOrderController::class, 'warrantyOrders']);
 });
-Route::post('job-orders/import-delivered', [\App\Http\Controllers\JobOrderController::class, 'importDelivered']);
-Route::post('job-orders/{jobOrder}/deliver', [\App\Http\Controllers\JobOrderController::class, 'deliver']);
-Route::get('warranty-orders', [\App\Http\Controllers\JobOrderController::class, 'warrantyOrders']);
