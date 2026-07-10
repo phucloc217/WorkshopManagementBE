@@ -7,7 +7,11 @@ use Illuminate\Support\Facades\Route;
 //     return $request->user();
 // })->middleware('auth:sanctum');
 
-Route::apiResource('workshops', \App\Http\Controllers\WorkshopController::class);
+
+Route::post('login', [\App\Http\Controllers\AuthController::class, 'login']);
+Route::middleware('auth:sanctum')->post('logout', [\App\Http\Controllers\AuthController::class, 'logout']);
+Route::middleware('auth:sanctum')->group(function () {
+    Route::apiResource('workshops', \App\Http\Controllers\WorkshopController::class);
 Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
 Route::apiResource('vehicle-types', \App\Http\Controllers\VehicleTypeController::class);
 
@@ -29,9 +33,6 @@ Route::post('users/{user}/change-password', [\App\Http\Controllers\UserControlle
 Route::post('users/{user}/change-status', [\App\Http\Controllers\UserController::class, 'changeStatus']);
 Route::get('/customer/by-phone/{phone}', [\App\Http\Controllers\CustomerController::class, 'findByPhone']);
 Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\VehicleController::class, 'findByMotorNumber']);
-Route::post('login', [\App\Http\Controllers\AuthController::class, 'login']);
-Route::middleware('auth:sanctum')->post('logout', [\App\Http\Controllers\AuthController::class, 'logout']);
-Route::middleware('auth:sanctum')->group(function () {
     Route::post('stock-receipts/import', [\App\Http\Controllers\StockReceiptController::class, 'import']);
     Route::get('inventory/history', [\App\Http\Controllers\WarehouseInventoryController::class, 'importExportHistory']);
     Route::apiResource('stock-issues', \App\Http\Controllers\StockIssueController::class);
