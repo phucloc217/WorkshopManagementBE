@@ -102,11 +102,12 @@ class JobOrder extends Model
 	{
 		return $this->belongsTo(User::class, 'completed_by');
 	}
+	
 	public function scopeAccessibleBy($query, $user)
-	{
-		if ($user->hasRole('admin')) {
-			return $query;
-		}
-		return $query->whereIn('workshop_id', $user->workshopIds());
-	}
+    {
+        if ($user->hasRole('admin')) {
+            return $query;
+        }
+        return $query->whereIn('workshop_id', $user->workshopIds());
+    }
 }

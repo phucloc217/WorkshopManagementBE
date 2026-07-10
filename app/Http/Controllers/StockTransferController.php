@@ -17,11 +17,12 @@ class StockTransferController extends Controller
             'per_page'     => 'nullable|integer|min:1|max:100',
         ]);
 
-        $query = StockTransfer::with([
-            'fromWarehouse:id,name',
-            'toWarehouse:id,name',
-            'createdBy:id,name',
-        ])
+        $query = StockTransfer::accessibleBy(auth()->user())
+            ->with([
+                'fromWarehouse:id,name',
+                'toWarehouse:id,name',
+                'createdBy:id,name',
+            ])
             ->when($request->warehouse_id, function ($q) use ($request) {
                 $q->where(function ($q) use ($request) {
                     $q->where('from_warehouse_id', $request->warehouse_id)

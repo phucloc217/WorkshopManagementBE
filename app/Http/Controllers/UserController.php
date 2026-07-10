@@ -154,4 +154,30 @@ class UserController extends Controller
 
         return response()->json(['code' => 200, 'message' => 'Cập nhật vai trò thành công']);
     }
+    // UserController
+    public function userDataAccess(User $user)
+    {
+        return response()->json([
+            'code' => 200,
+            'data' => [
+                'workshop_ids'  => $user->workshops()->pluck('workshops.id'),
+                'warehouse_ids' => $user->warehouses()->pluck('warehouses.id'),
+            ]
+        ]);
+    }
+
+    public function syncDataAccess(Request $request, User $user)
+    {
+        $request->validate([
+            'workshop_ids'    => 'array',
+            'workshop_ids.*'  => 'exists:workshops,id',
+            'warehouse_ids'   => 'array',
+            'warehouse_ids.*' => 'exists:warehouses,id',
+        ]);
+
+        $user->workshops()->sync($request->workshop_ids ?? []);
+        $user->warehouses()->sync($request->warehouse_ids ?? []);
+
+        return response()->json(['code' => 200, 'message' => 'Cập nhật quyền dữ liệu thành công']);
+    }
 }

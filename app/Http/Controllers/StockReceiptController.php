@@ -17,10 +17,11 @@ class StockReceiptController extends Controller
             'per_page'     => 'nullable|integer|min:1|max:100',
         ]);
 
-        $query = StockReceipt::with([
-            'warehouse:id,name',
-            'createdBy:id,name',
-        ])
+        $query = StockReceipt::accessibleBy(auth()->user())
+            ->with([
+                'warehouse:id,name',
+                'createdBy:id,name',
+            ])
             ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id))
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->when($request->search, fn($q) => $q->where('receipt_no', 'like', "%{$request->search}%"))
@@ -31,6 +32,9 @@ class StockReceiptController extends Controller
 
     public function show(StockReceipt $stockReceipt)
     {
+        if (!auth()->user()->canAccessWarehouse($stockReceipt->warehouse_id)) {
+            abort(403, 'Bạn không có quyền truy cập kho này');
+        }
         return response()->json(
             $stockReceipt->load([
                 'warehouse:id,name',
@@ -89,6 +93,9 @@ class StockReceiptController extends Controller
 
     public function confirm(Request $request, StockReceipt $stockReceipt)
     {
+        if (!auth()->user()->canAccessWarehouse($stockReceipt->warehouse_id)) {
+            abort(403, 'Bạn không có quyền truy cập kho này');
+        }
         if ($stockReceipt->status !== 'Mới Tạo') {
             return response()->json(['message' => 'Phiếu đã được xử lý'], 422);
         }

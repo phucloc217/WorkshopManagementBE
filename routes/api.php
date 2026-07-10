@@ -71,7 +71,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('job-orders/import-delivered', [\App\Http\Controllers\JobOrderController::class, 'importDelivered']);
     Route::post('job-orders/{jobOrder}/deliver', [\App\Http\Controllers\JobOrderController::class, 'deliver']);
     Route::get('warranty-orders', [\App\Http\Controllers\JobOrderController::class, 'warrantyOrders']);
-   
-});
- Route::get('repair-reports/history', [\App\Http\Controllers\RepairReportController::class, 'history']);
+    Route::get('repair-reports/history', [\App\Http\Controllers\RepairReportController::class, 'history']);
     Route::get('repair-reports/statistics', [\App\Http\Controllers\RepairReportController::class, 'statistics']);
+    Route::get('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'userDataAccess']);
+    Route::post('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'syncDataAccess']);
+});

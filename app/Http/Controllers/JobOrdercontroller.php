@@ -17,8 +17,15 @@ class JobOrdercontroller extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+        \Log::info('Debug accessibleBy', [
+            'user_id'      => $user->id,
+            'is_admin'     => $user->hasRole('admin'),
+            'workshop_ids' => $user->workshopIds(),
+        ]);
         try {
             $query = JobOrder::query()
+                ->accessibleBy(auth()->user())
                 ->select([
                     'id',
                     'order_no',
@@ -131,6 +138,9 @@ class JobOrdercontroller extends Controller
      */
     public function show(string $id)
     {
+        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+            abort(403, 'Bạn không có quyền truy cập xưởng này');
+        }
         $jobOrder = JobOrder::with([
             'customer:id,name,phone',
             'vehicle:id,motor_number,vin,model',
@@ -282,6 +292,9 @@ class JobOrdercontroller extends Controller
     // Giao xe 1 phiếu
     public function deliver(JobOrder $jobOrder)
     {
+        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+            abort(403, 'Bạn không có quyền truy cập xưởng này');
+        }
         if ($jobOrder->overall_status !== 'Hoàn Thành') {
             return response()->json([
                 'message' => 'Chỉ giao được xe đã hoàn thành sửa chữa'
@@ -345,6 +358,7 @@ class JobOrdercontroller extends Controller
     {
         try {
             $query = JobOrder::query()
+                ->accessibleBy(auth()->user())
                 ->select([
                     'id',
                     'order_no',
@@ -369,7 +383,7 @@ class JobOrdercontroller extends Controller
                 ])
                 // Chỉ lấy phiếu có ít nhất 1 task bảo hành
                 ->whereHas('tasks', fn($q) => $q->where('is_warranty', true))
-                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Sửa Chữa']) 
+                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Sửa Chữa'])
                 ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
                 ->when($request->search, function ($q) use ($request) {
                     $search = $request->search;
@@ -379,7 +393,7 @@ class JobOrdercontroller extends Controller
                             ->orWhereHas('customer', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"));
                     });
                 })
-                
+
                 // Phiếu còn task bảo hành chưa xong lên đầu
                 ->orderByRaw("(SELECT COUNT(*) FROM job_tasks WHERE job_tasks.job_order_id = job_orders.id AND job_tasks.is_warranty = true AND job_tasks.status != 'Hoàn Thành') DESC")
                 ->latest();

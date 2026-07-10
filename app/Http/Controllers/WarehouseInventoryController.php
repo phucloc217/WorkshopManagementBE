@@ -21,7 +21,9 @@ class WarehouseInventoryController extends Controller
             'low_stock'    => 'nullable|boolean',
             'per_page'     => 'nullable|integer|min:1|max:100',
         ]);
-
+        if (!auth()->user()->canAccessWarehouse($request->warehouse_id)) {
+            return response()->json(['message' => 'Bạn không có quyền truy cập kho này'], 403);
+        }
         $warehouseId = $request->warehouse_id;
 
         $query = Part::query()

@@ -13,7 +13,8 @@ class WarehouseController extends Controller
      */
     public function index()
     {
-        return Warehouse::with('workshop:id,name')
+        return Warehouse::accessibleBy(auth()->user())
+            ->with('workshop:id,name')
             ->select(['id', 'name', 'description', 'is_active', 'workshop_id'])
             ->latest()
             ->get();
