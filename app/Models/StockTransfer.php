@@ -68,13 +68,7 @@ class StockTransfer extends Model
     {
         return $this->belongsTo(User::class, 'received_by');
     }
-    public function scopeAccessibleBy($query, $user)
-    {
-        if ($user->hasRole('admin')) {
-            return $query;
-        }
-        return $query->whereIn('warehouse_id', $user->warehouseIds());
-    }
+
     // StockTransfer.php
     public function scopeAccessibleBy($query, $user)
     {
