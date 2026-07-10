@@ -340,4 +340,57 @@ class JobOrdercontroller extends Controller
             'errors'  => $errors
         ]);
     }
+    // JobOrderController hoặc controller riêng WarrantyController
+    public function warrantyOrders(Request $request)
+    {
+        try {
+            $query = JobOrder::query()
+                ->select([
+                    'id',
+                    'order_no',
+                    'customer_id',
+                    'vehicle_id',
+                    'workshop_id',
+                    'overall_status',
+                    'created_at'
+                ])
+                ->with([
+                    'customer:id,name,phone',
+                    'vehicle:id,motor_number,model',
+                    'workshop:id,name',
+                    // Chỉ load task bảo hành
+                    'tasks' => fn($q) => $q->where('is_warranty', true)
+                        ->with([
+                            'createdBy:id,name',
+                            'startedBy:id,name',
+                            'completedBy:id,name'
+                        ])
+                        ->orderBy('created_at'),
+                ])
+                // Chỉ lấy phiếu có ít nhất 1 task bảo hành
+                ->whereHas('tasks', fn($q) => $q->where('is_warranty', true))
+                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Sửa Chữa']) 
+                ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
+                ->when($request->search, function ($q) use ($request) {
+                    $search = $request->search;
+                    $q->where(function ($q) use ($search) {
+                        $q->where('order_no', 'ILIKE', "%{$search}%")
+                            ->orWhereHas('vehicle', fn($q) => $q->where('motor_number', 'ILIKE', "%{$search}%"))
+                            ->orWhereHas('customer', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"));
+                    });
+                })
+                
+                // Phiếu còn task bảo hành chưa xong lên đầu
+                ->orderByRaw("(SELECT COUNT(*) FROM job_tasks WHERE job_tasks.job_order_id = job_orders.id AND job_tasks.is_warranty = true AND job_tasks.status != 'Hoàn Thành') DESC")
+                ->latest();
+
+            return response()->json($query->paginate($request->per_page ?? 20));
+        } catch (\Throwable $e) {
+            \Log::error('Warranty orders error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Không thể tải danh sách bảo hành',
+                'error'   => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
 }

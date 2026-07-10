@@ -71,3 +71,4 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 Route::post('job-orders/import-delivered', [\App\Http\Controllers\JobOrderController::class, 'importDelivered']);
 Route::post('job-orders/{jobOrder}/deliver', [\App\Http\Controllers\JobOrderController::class, 'deliver']);
+Route::get('warranty-orders', [\App\Http\Controllers\JobOrderController::class, 'warrantyOrders']);
