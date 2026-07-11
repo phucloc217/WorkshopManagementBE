@@ -383,7 +383,7 @@ class JobOrdercontroller extends Controller
                 ])
                 // Chỉ lấy phiếu có ít nhất 1 task bảo hành
                 ->whereHas('tasks', fn($q) => $q->where('is_warranty', true))
-                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Sửa Chữa'])
+                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Thực Hiện'])
                 ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
                 ->when($request->search, function ($q) use ($request) {
                     $search = $request->search;
