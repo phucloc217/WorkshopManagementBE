@@ -12,7 +12,7 @@ Route::post('login', [\App\Http\Controllers\AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [\App\Http\Controllers\AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('workshops', \App\Http\Controllers\WorkshopController::class);
-    Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
+    Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class)->except(['show']);
     Route::apiResource('vehicle-types', \App\Http\Controllers\VehicleTypeController::class);
 
 
