@@ -12,27 +12,27 @@ Route::post('login', [\App\Http\Controllers\AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->post('logout', [\App\Http\Controllers\AuthController::class, 'logout']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('workshops', \App\Http\Controllers\WorkshopController::class);
-Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
-Route::apiResource('vehicle-types', \App\Http\Controllers\VehicleTypeController::class);
+    Route::apiResource('warehouses', \App\Http\Controllers\WarehouseController::class);
+    Route::apiResource('vehicle-types', \App\Http\Controllers\VehicleTypeController::class);
 
 
-Route::apiResource('users', \App\Http\Controllers\UserController::class);
-Route::apiResource('services', \App\Http\Controllers\ServiceController::class);
-Route::apiResource('parts', \App\Http\Controllers\PartController::class);
-Route::get(
-    '/job-orders/{jobOrderId}/tasks',
-    [\App\Http\Controllers\JobTaskController::class, 'getTasksByOrderId']
-);
-Route::get(
-    '/job-orders/{jobOrderId}/parts',
-    [\App\Http\Controllers\JobPartController::class, 'getPartsByOrderId']
-);
-Route::post('/job-orders/{id}/parts/import', [\App\Http\Controllers\JobPartController::class, 'import']);
+    Route::apiResource('users', \App\Http\Controllers\UserController::class);
+    Route::apiResource('services', \App\Http\Controllers\ServiceController::class)->except(['show']);
+    Route::apiResource('parts', \App\Http\Controllers\PartController::class);
+    Route::get(
+        '/job-orders/{jobOrderId}/tasks',
+        [\App\Http\Controllers\JobTaskController::class, 'getTasksByOrderId']
+    );
+    Route::get(
+        '/job-orders/{jobOrderId}/parts',
+        [\App\Http\Controllers\JobPartController::class, 'getPartsByOrderId']
+    );
+    Route::post('/job-orders/{id}/parts/import', [\App\Http\Controllers\JobPartController::class, 'import']);
 
-Route::post('users/{user}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
-Route::post('users/{user}/change-status', [\App\Http\Controllers\UserController::class, 'changeStatus']);
-Route::get('/customer/by-phone/{phone}', [\App\Http\Controllers\CustomerController::class, 'findByPhone']);
-Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\VehicleController::class, 'findByMotorNumber']);
+    Route::post('users/{user}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
+    Route::post('users/{user}/change-status', [\App\Http\Controllers\UserController::class, 'changeStatus']);
+    Route::get('/customer/by-phone/{phone}', [\App\Http\Controllers\CustomerController::class, 'findByPhone']);
+    Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\VehicleController::class, 'findByMotorNumber']);
     Route::post('stock-receipts/import', [\App\Http\Controllers\StockReceiptController::class, 'import']);
     Route::get('inventory/history', [\App\Http\Controllers\WarehouseInventoryController::class, 'importExportHistory']);
     Route::apiResource('stock-issues', \App\Http\Controllers\StockIssueController::class);
@@ -76,4 +76,5 @@ Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\Veh
     Route::get('repair-reports/statistics', [\App\Http\Controllers\RepairReportController::class, 'statistics']);
     Route::get('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'userDataAccess']);
     Route::post('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'syncDataAccess']);
+    Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
 });
