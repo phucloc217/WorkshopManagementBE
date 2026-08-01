@@ -33,7 +33,16 @@ class WarehouseController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate([
+            'name'        => 'required|string|unique:warehouses,name',
+            'description' => 'nullable|string',
+            'workshop_id' => 'required|exists:workshops,id',
+            'is_active'   => 'boolean',
+        ]);
+
+        $warehouse = Warehouse::create($request->only('name', 'description', 'workshop_id', 'is_active'));
+
+        return response()->json(['code' => 200, 'message' => 'Tạo kho thành công', 'data' => $warehouse], 201);
     }
 
     /**
@@ -57,7 +66,16 @@ class WarehouseController extends Controller
      */
     public function update(Request $request, Warehouse $warehouse)
     {
-        //
+        $request->validate([
+            'name'        => "required|string|unique:warehouses,name,{$warehouse->id}",
+            'description' => 'nullable|string',
+            'workshop_id' => 'required|exists:workshops,id',
+            'is_active'   => 'boolean',
+        ]);
+
+        $warehouse->update($request->only('name', 'description', 'workshop_id', 'is_active'));
+
+        return response()->json(['code' => 200, 'message' => 'Cập nhật kho thành công']);
     }
 
     /**
@@ -65,6 +83,15 @@ class WarehouseController extends Controller
      */
     public function destroy(Warehouse $warehouse)
     {
-        //
+        $inUse = \App\Models\WarehouseParts::where('warehouse_id', $warehouse->id)->where('qty', '>', 0)->exists()
+            || \App\Models\StockReceipt::where('warehouse_id', $warehouse->id)->exists();
+
+        if ($inUse) {
+            return response()->json(['message' => 'Kho đã có dữ liệu tồn/phiếu nhập, không thể xóa'], 422);
+        }
+
+        $warehouse->delete();
+
+        return response()->json(['code' => 200, 'message' => 'Xóa kho thành công']);
     }
 }
