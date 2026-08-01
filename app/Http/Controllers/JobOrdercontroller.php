@@ -10,19 +10,13 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class JobOrdercontroller extends Controller
+class JobOrderController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Danh sách phiếu sửa chữa
      */
     public function index(Request $request)
     {
-        $user = auth()->user();
-        \Log::info('Debug accessibleBy', [
-            'user_id'      => $user->id,
-            'is_admin'     => $user->hasRole('admin'),
-            'workshop_ids' => $user->workshopIds(),
-        ]);
         try {
             $query = JobOrder::query()
                 ->accessibleBy(auth()->user())
@@ -78,16 +72,13 @@ class JobOrdercontroller extends Controller
         }
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         //
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Tạo phiếu sửa chữa mới
      */
     public function store(Request $request)
     {
@@ -101,46 +92,46 @@ class JobOrdercontroller extends Controller
             'odo'          => 'nullable|integer',
             'description'  => 'nullable|string'
         ]);
-        DB::transaction(function () use ($request) {
 
+        if (!auth()->user()->canAccessWorkshop($request->workshop_id)) {
+            abort(403, 'Bạn không có quyền tạo phiếu cho xưởng này');
+        }
+
+        $jobOrder = DB::transaction(function () use ($request) {
             $customer = Customer::firstOrCreate(
                 ['phone' => $request->phone],
                 ['name'  => $request->name]
             );
+
             $vehicle = Vehicle::firstOrCreate(
                 ['motor_number' => $request->motor_number],
                 ['vin'          => $request->vin]
             );
-            $request->merge(['vehicle_id' => $vehicle->id]);
-            $request->merge(['customer_id' => $customer->id]);
-            $request['issue_description'] = $request->type === 'Xe GSM'
+
+            $issueDescription = $request->type === 'Xe GSM'
                 ? implode(PHP_EOL, $request->issue_description ?? [])
                 : implode('; ', $request->issue_description ?? []);
-            // $request['order_no'] = $this->generateOrderNo();
-            // $request['created_by'] = auth()->id();
-            $jobOrder = JobOrder::create([
+
+            return JobOrder::create([
                 'vehicle_id'        => $vehicle->id,
                 'customer_id'       => $customer->id,
                 'workshop_id'       => $request->workshop_id,
                 'type'              => $request->type,
-                'issue_description' => $request['issue_description'],
+                'issue_description' => $issueDescription,
                 'order_no'          => $this->generateOrderNo(),
                 'created_by'        => auth()->id(),
                 'odo'               => $request->odo,
             ]);
-
-            return response()->json($jobOrder, 201);
         });
+
+        return response()->json($jobOrder, 201);
     }
 
     /**
-     * Display the specified resource.
+     * Chi tiết phiếu sửa chữa (kèm nhật ký)
      */
     public function show(string $id)
     {
-        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
-            abort(403, 'Bạn không có quyền truy cập xưởng này');
-        }
         $jobOrder = JobOrder::with([
             'customer:id,name,phone',
             'vehicle:id,motor_number,vin,model',
@@ -148,6 +139,10 @@ class JobOrdercontroller extends Controller
             'tasks' => fn($q) => $q->orderBy('created_at'),
             'createdBy:id,name'
         ])->findOrFail($id);
+
+        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+            abort(403, 'Bạn không có quyền truy cập xưởng này');
+        }
 
         // Tạo log từ các trường có sẵn
         $logs = collect();
@@ -184,7 +179,7 @@ class JobOrdercontroller extends Controller
             }
         }
 
-        //Thời gian hoàn thành task
+        // Log hoàn thành sửa chữa
         if ($jobOrder->completed_at) {
             $logs->push([
                 'time'       => $jobOrder->completed_at?->format('d/m/Y H:i'),
@@ -192,37 +187,48 @@ class JobOrdercontroller extends Controller
                 'content'    => 'Hoàn thành sửa chữa'
             ]);
         }
+
+        // Log giao xe
+        if ($jobOrder->delivered_date) {
+            $logs->push([
+                'time'       => $jobOrder->delivered_date?->format('d/m/Y H:i'),
+                'created_by' => $jobOrder->deliveredBy?->name,
+                'content'    => 'Giao xe cho khách'
+            ]);
+        }
+
         return response()->json([
             ...$jobOrder->toArray(),
             'logs' => $logs->sortByDesc('time')->values()
         ]);
     }
-    /**
-     * Show the form for editing the specified resource.
-     */
+
     public function edit(JobOrder $jobOrder)
     {
         //
     }
 
     /**
-     * Update the specified resource in storage.
+     * Cập nhật thông tin phiếu và xe
      */
     public function update(Request $request, JobOrder $jobOrder)
     {
+        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+            abort(403, 'Bạn không có quyền truy cập xưởng này');
+        }
+
         $request->validate([
-            'vehicle_id' => 'required|exists:vehicles,id',
-            'vehicle.vin' => 'nullable|string|max:100',
-            'vehicle.model' => 'nullable|string|max:255',
+            'vehicle_id'        => 'required|exists:vehicles,id',
+            'vehicle.vin'       => 'nullable|string|max:100',
+            'vehicle.model'     => 'nullable|string|max:255',
             'issue_description' => 'nullable|string'
         ]);
 
         DB::transaction(function () use ($request, $jobOrder) {
-
             $vehicle = Vehicle::findOrFail($request->vehicle_id);
 
             $vehicle->update([
-                'vin' => $request->input('vehicle.vin'),
+                'vin'   => $request->input('vehicle.vin'),
                 'model' => $request->input('vehicle.model')
             ]);
 
@@ -234,33 +240,20 @@ class JobOrdercontroller extends Controller
         return $jobOrder->fresh();
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(JobOrder $jobOrder)
     {
         //
     }
-    private function generateOrderNo(): string
-    {
-        $today = Carbon::now()->format('dmy'); // 090626
 
-        $prefix = "SC/{$today}/";
-
-        $lastOrder = JobOrder::where('order_no', 'like', "{$prefix}%")
-            ->orderByDesc('order_no')
-            ->first();
-
-        if (!$lastOrder) {
-            $sequence = 1;
-        } else {
-            $sequence = (int) substr($lastOrder->order_no, -4) + 1;
-        }
-
-        return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
-    }
+    /**
+     * Kết thúc sửa chữa
+     */
     public function finish(JobOrder $jobOrder)
     {
+        if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+            abort(403, 'Bạn không có quyền truy cập xưởng này');
+        }
+
         // Kiểm tra còn công việc chưa hoàn thành không
         $hasUnfinishedTask = $jobOrder->tasks()
             ->where('status', '!=', 'Hoàn Thành')
@@ -272,7 +265,6 @@ class JobOrdercontroller extends Controller
             ], 422);
         }
 
-        // Kiểm tra đã hoàn thành rồi
         if ($jobOrder->overall_status === 'Hoàn Thành') {
             return response()->json([
                 'message' => 'Phiếu sửa chữa đã được hoàn thành.'
@@ -281,20 +273,24 @@ class JobOrdercontroller extends Controller
 
         $jobOrder->update([
             'overall_status' => 'Hoàn Thành',
-            'completed_at' => now(),
-            'completed_by' => auth()->id(),
+            'completed_at'   => now(),
+            'completed_by'   => auth()->id(),
         ]);
 
         return response()->json([
             'message' => 'Kết thúc sửa chữa thành công.'
         ]);
     }
-    // Giao xe 1 phiếu
+
+    /**
+     * Giao xe 1 phiếu
+     */
     public function deliver(JobOrder $jobOrder)
     {
         if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
             abort(403, 'Bạn không có quyền truy cập xưởng này');
         }
+
         if ($jobOrder->overall_status !== 'Hoàn Thành') {
             return response()->json([
                 'message' => 'Chỉ giao được xe đã hoàn thành sửa chữa'
@@ -310,23 +306,29 @@ class JobOrdercontroller extends Controller
         return response()->json(['message' => 'Giao xe thành công']);
     }
 
-    // Import danh sách xe đã giao từ Excel (theo biển số hoặc mã phiếu)
+    /**
+     * Import danh sách xe đã giao từ Excel (theo biển số hoặc mã phiếu)
+     */
     public function importDelivered(Request $request)
     {
         $request->validate([
             'rows'              => 'required|array|min:1',
-            'rows.*.identifier' => 'required|string', // biển số hoặc order_no
+            'rows.*.identifier' => 'required|string',
         ]);
 
-        $errors = [];
+        $user    = auth()->user();
+        $errors  = [];
         $success = 0;
 
         foreach ($request->rows as $index => $row) {
             $identifier = trim($row['identifier']);
 
-            $jobOrder = JobOrder::where('order_no', $identifier)
-                ->orWhereHas('vehicle', fn($q) => $q->where('motor_number', $identifier))
+            $jobOrder = JobOrder::query()
                 ->where('overall_status', 'Hoàn Thành')
+                ->where(function ($q) use ($identifier) {
+                    $q->where('order_no', $identifier)
+                        ->orWhereHas('vehicle', fn($q) => $q->where('motor_number', $identifier));
+                })
                 ->latest('created_at')
                 ->first();
 
@@ -339,10 +341,19 @@ class JobOrdercontroller extends Controller
                 continue;
             }
 
+            if (!$user->canAccessWorkshop($jobOrder->workshop_id)) {
+                $errors[] = [
+                    'row'        => $index + 2,
+                    'identifier' => $identifier,
+                    'message'    => "Không có quyền giao xe của xưởng này"
+                ];
+                continue;
+            }
+
             $jobOrder->update([
                 'overall_status' => 'Đã Giao Xe',
                 'delivered_date' => now(),
-                'delivered_by'   => auth()->id(),
+                'delivered_by'   => $user->id,
             ]);
             $success++;
         }
@@ -353,7 +364,10 @@ class JobOrdercontroller extends Controller
             'errors'  => $errors
         ]);
     }
-    // JobOrderController hoặc controller riêng WarrantyController
+
+    /**
+     * Danh sách phiếu có công việc bảo hành
+     */
     public function warrantyOrders(Request $request)
     {
         try {
@@ -383,7 +397,8 @@ class JobOrdercontroller extends Controller
                 ])
                 // Chỉ lấy phiếu có ít nhất 1 task bảo hành
                 ->whereHas('tasks', fn($q) => $q->where('is_warranty', true))
-                ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Sửa Chữa'])
+                // Loại phiếu đã giao xe, còn lại đều theo dõi
+                ->whereNotIn('overall_status', ['Đã Giao Xe'])
                 ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
                 ->when($request->search, function ($q) use ($request) {
                     $search = $request->search;
@@ -393,18 +408,39 @@ class JobOrdercontroller extends Controller
                             ->orWhereHas('customer', fn($q) => $q->where('name', 'ILIKE', "%{$search}%"));
                     });
                 })
-
                 // Phiếu còn task bảo hành chưa xong lên đầu
                 ->orderByRaw("(SELECT COUNT(*) FROM job_tasks WHERE job_tasks.job_order_id = job_orders.id AND job_tasks.is_warranty = true AND job_tasks.status != 'Hoàn Thành') DESC")
                 ->latest();
 
             return response()->json($query->paginate($request->per_page ?? 20));
         } catch (\Throwable $e) {
-            \Log::error('Warranty orders error: ' . $e->getMessage());
+            \Log::error('Warranty orders error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'message' => 'Không thể tải danh sách bảo hành',
                 'error'   => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
+    }
+
+    /**
+     * Sinh mã phiếu: SC/ddmmyy/0001
+     */
+    private function generateOrderNo(): string
+    {
+        $today  = Carbon::now()->format('dmy');
+        $prefix = "SC/{$today}/";
+
+        $lastOrder = JobOrder::where('order_no', 'like', "{$prefix}%")
+            ->orderByDesc('order_no')
+            ->first();
+
+        $sequence = $lastOrder
+            ? (int) substr($lastOrder->order_no, -4) + 1
+            : 1;
+
+        return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
 }
