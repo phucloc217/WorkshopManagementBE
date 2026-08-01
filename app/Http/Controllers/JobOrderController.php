@@ -397,7 +397,12 @@ class JobOrderController extends Controller
                 ])
                 // Chỉ lấy phiếu có ít nhất 1 task bảo hành
                 ->whereHas('tasks', fn($q) => $q->where('is_warranty', true))
+<<<<<<< HEAD:app/Http/Controllers/JobOrdercontroller.php
                 ->whereIn('overall_status', ['Mới Tiếp Nhận', 'Đang Thực Hiện'])
+=======
+                // Loại phiếu đã giao xe, còn lại đều theo dõi
+                ->whereNotIn('overall_status', ['Đã Giao Xe'])
+>>>>>>> 34b63a38116c13a9822913b25ccdd3ba24180530:app/Http/Controllers/JobOrderController.php
                 ->when($request->workshop_id, fn($q) => $q->where('workshop_id', $request->workshop_id))
                 ->when($request->search, function ($q) use ($request) {
                     $search = $request->search;
@@ -442,4 +447,7 @@ class JobOrderController extends Controller
 
         return $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
     }
+
+
 }
+
