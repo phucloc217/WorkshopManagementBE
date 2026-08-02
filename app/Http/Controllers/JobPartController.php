@@ -127,4 +127,22 @@ class JobPartController extends Controller
             'errors' => $errors
         ]);
     }
+    public function updateActualUse(Request $request, JobPart $jobPart)
+    {
+        $request->validate([
+            'qty_actual_use' => 'required|integer|min:0',
+        ]);
+
+        if ($request->qty_actual_use > $jobPart->qty_issued) {
+            return response()->json([
+                'message' => 'Số lượng đã dùng không được vượt quá số lượng đã cấp'
+            ], 422);
+        }
+
+        $jobPart->update([
+            'qty_actual_use' => $request->qty_actual_use,
+        ]);
+
+        return response()->json(['message' => 'Cập nhật số lượng đã dùng thành công']);
+    }
 }

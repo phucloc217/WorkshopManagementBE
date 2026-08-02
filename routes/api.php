@@ -77,4 +77,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'userDataAccess']);
     Route::post('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'syncDataAccess']);
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
+    Route::patch('job-parts/{jobPart}/actual-use', [\App\Http\Controllers\JobPartController::class, 'updateActualUse']);
 });
