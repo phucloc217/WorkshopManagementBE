@@ -254,6 +254,14 @@ class JobOrderController extends Controller
             ], 422);
         }
 
+        // Chặn nếu đã có phiếu xuất kho gắn với phiếu này
+        $hasStockIssue = \App\Models\StockIssue::where('job_order_id', $jobOrder->id)->exists();
+        if ($hasStockIssue) {
+            return response()->json([
+                'message' => 'Phiếu đã có phiếu xuất kho liên quan, không thể xóa'
+            ], 422);
+        }
+
         // Chặn nếu đã có linh kiện được cấp
         $hasIssuedParts = $jobOrder->parts()->where('qty_issued', '>', 0)->exists();
         if ($hasIssuedParts) {
