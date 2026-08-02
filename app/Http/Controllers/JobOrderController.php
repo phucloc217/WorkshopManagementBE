@@ -104,7 +104,7 @@ class JobOrderController extends Controller
             );
 
             $vehicle = Vehicle::firstOrCreate(
-                ['motor_number' => $request->motor_number],
+                ['motor_number' => strtoupper(trim($request->motor_number))],
                 ['vin'          => $request->vin]
             );
 
@@ -241,9 +241,44 @@ class JobOrderController extends Controller
     }
 
     public function destroy(JobOrder $jobOrder)
-    {
-        //
+{
+    if (!auth()->user()->canAccessWorkshop($jobOrder->workshop_id)) {
+        abort(403, 'Bạn không có quyền truy cập xưởng này');
     }
+
+    // Chỉ cho xóa phiếu mới tạo, chưa xử lý gì
+    if ($jobOrder->overall_status !== 'Mới Tiếp Nhận') {
+        return response()->json([
+            'message' => 'Chỉ xóa được phiếu ở trạng thái Mới Tiếp Nhận'
+        ], 422);
+    }
+
+    // Chặn nếu đã có linh kiện được cấp
+    $hasIssuedParts = $jobOrder->parts()->where('qty_issued', '>', 0)->exists();
+    if ($hasIssuedParts) {
+        return response()->json([
+            'message' => 'Phiếu đã có linh kiện được cấp, không thể xóa'
+        ], 422);
+    }
+
+    // Chặn nếu có công việc đã bắt đầu
+    $hasStartedTask = $jobOrder->tasks()
+        ->where('status', '!=', 'Mới Tạo')
+        ->exists();
+    if ($hasStartedTask) {
+        return response()->json([
+            'message' => 'Phiếu đã có công việc đang thực hiện, không thể xóa'
+        ], 422);
+    }
+
+    DB::transaction(function () use ($jobOrder) {
+        $jobOrder->tasks()->delete();
+        $jobOrder->parts()->delete();
+        $jobOrder->delete();
+    });
+
+    return response()->json(['message' => 'Xóa phiếu sửa chữa thành công']);
+}
 
     /**
      * Kết thúc sửa chữa
