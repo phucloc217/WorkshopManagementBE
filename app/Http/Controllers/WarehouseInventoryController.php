@@ -19,7 +19,7 @@ class WarehouseInventoryController extends Controller
             'warehouse_id' => 'required|exists:warehouses,id',
             'search'       => 'nullable|string',
             'low_stock'    => 'nullable|boolean',
-            'per_page'     => 'nullable|integer|min:1|max:100',
+            'per_page'     => 'nullable|integer|min:1|max:100000',
         ]);
         if (!auth()->user()->canAccessWarehouse($request->warehouse_id)) {
             return response()->json(['message' => 'Bạn không có quyền truy cập kho này'], 403);
@@ -53,7 +53,7 @@ class WarehouseInventoryController extends Controller
     {
         $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
-            'per_page'     => 'nullable|integer|min:1|max:100',
+            'per_page'     => 'nullable|integer|min:1|max:100000',
         ]);
 
         $warehouseId = $request->warehouse_id;
@@ -111,7 +111,7 @@ class WarehouseInventoryController extends Controller
     {
         $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
-            'per_page'     => 'nullable|integer|min:1|max:100',
+            'per_page'     => 'nullable|integer|min:1|max:100000',
         ]);
 
         $warehouseId = $request->warehouse_id;
