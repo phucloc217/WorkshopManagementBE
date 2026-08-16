@@ -2,17 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class VehicleType extends Model
 {
     use HasUuids;
+
     protected $table = 'vehicle_types';
+    public $incrementing = false;
     public $timestamps = false;
-   
+
+    protected $casts = [
+        'is_active'  => 'boolean',
+        'sort_order' => 'integer',
+    ];
 
     protected $fillable = [
-        'name'
+        'name',
+        'sort_order',
+        'is_active',
     ];
 }
