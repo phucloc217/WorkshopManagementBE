@@ -78,5 +78,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'syncDataAccess']);
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
     Route::patch('job-parts/{jobPart}/actual-use', [\App\Http\Controllers\JobPartController::class, 'updateActualUse']);
-    Route::apiResource('accessories', AccessoryController::class)->except(['show']);
+    Route::apiResource('accessories', [\App\Http\Controllers\AccessoryController::class])->except(['show']);
 });
