@@ -79,4 +79,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
     Route::patch('job-parts/{jobPart}/actual-use', [\App\Http\Controllers\JobPartController::class, 'updateActualUse']);
     Route::apiResource('accessories', \App\Http\Controllers\AccessoryController::class)->except(['show']);
+    Route::apiResource('issues', \App\Http\Controllers\IssueController::class)->except(['show']);
 });
