@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\VehicleController::class, 'findByMotorNumber']);
     Route::post('stock-receipts/import', [\App\Http\Controllers\StockReceiptController::class, 'import']);
     Route::get('inventory/history', [\App\Http\Controllers\WarehouseInventoryController::class, 'importExportHistory']);
+    Route::post('stock-issues/import', [\App\Http\Controllers\StockIssueController::class, 'import']);
     Route::apiResource('stock-issues', \App\Http\Controllers\StockIssueController::class);
     Route::post('stock-issues/{stockIssue}/confirm', [\App\Http\Controllers\StockIssueController::class, 'confirm']);
     Route::get('job-order-parts', [\App\Http\Controllers\StockIssueController::class, 'getJobOrderParts']);
