@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
         [\App\Http\Controllers\JobOrderController::class, 'finish']
     );
     Route::get('inventory/parts-to-import', [\App\Http\Controllers\WarehouseInventoryController::class, 'partsToImport']);
+    Route::post('stock-transfers/import', [\App\Http\Controllers\StockTransferController::class, 'import']);
     Route::apiResource('stock-transfers', \App\Http\Controllers\StockTransferController::class);
     Route::post('stock-transfers/{stockTransfer}/transfer', [\App\Http\Controllers\StockTransferController::class, 'transfer']);
     Route::post('stock-transfers/{stockTransfer}/receive', [\App\Http\Controllers\StockTransferController::class, 'receive']);
