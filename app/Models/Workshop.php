@@ -32,7 +32,7 @@ class Workshop extends Model
 	public $timestamps = false;
 
 	protected $casts = [
-		
+
 		'workshop_code' => 'string',
 		'phone' => 'string',
 		'is_active' => 'bool'
@@ -49,5 +49,12 @@ class Workshop extends Model
 	public function job_orders()
 	{
 		return $this->hasMany(JobOrder::class);
+	}
+	public function scopeAccessibleBy($query, $user)
+	{
+		if ($user->hasRole('admin')) {
+			return $query;
+		}
+		return $query->whereIn('id', $user->workshopIds());
 	}
 }

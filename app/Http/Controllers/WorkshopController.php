@@ -14,7 +14,14 @@ class WorkshopController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Workshop::query();
+        $user = auth()->user();
+
+        // Trang quản trị: bỏ qua lọc quyền dữ liệu, cần quyền workshop.manage
+        $bypassFilter = $request->boolean('all') && $user->can('workshop.manage');
+
+        $query = $bypassFilter
+            ? Workshop::query()
+            : Workshop::accessibleBy($user);
 
         if ($request->filled('name')) {
             $query->where('name', 'ILIKE', '%' . $request->name . '%');
@@ -24,7 +31,12 @@ class WorkshopController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
-        return $query->get();
+        // Chỉ chi nhánh tham gia sửa chữa — dùng cho form tiếp nhận
+        if ($request->boolean('for_repair')) {
+            $query->where('is_repair_enabled', true)->where('is_active', true);
+        }
+
+        return $query->orderBy('name')->get();
     }
 
     /**
