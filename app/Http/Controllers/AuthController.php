@@ -40,7 +40,7 @@ class AuthController extends Controller
         ];
 
         if (auth()->attempt($credentials)) {
-            $user = auth()->user();
+            $user  = auth()->user();
             $token = $user->createToken('auth_token')->plainTextToken;
 
             // Ghi log thành công
@@ -65,10 +65,13 @@ class AuthController extends Controller
             ]);
         }
 
-        // Ghi log thất bại
+        // Ghi log thất bại — tra user theo SĐT để biết ai gõ sai mật khẩu
+        $existingUser = \App\Models\User::where('phone', $request->phone)->first();
+
         LoginLog::create([
             ...$logData,
-            'status' => false,
+            'user_id' => $existingUser?->id,
+            'status'  => false,
         ]);
 
         return response()->json([

@@ -8,7 +8,7 @@ use App\Models\WarehouseParts;
 use App\Models\JobPart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-
+use App\Models\Part;
 class StockIssueController extends Controller
 {
     public function index(Request $request)
@@ -181,5 +181,165 @@ class StockIssueController extends Controller
         $seq = $last ? (int) substr($last, -4) + 1 : 1;
 
         return $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
+    }
+    public function import(Request $request)
+    {
+        $request->validate([
+            'warehouse_id' => 'required|exists:warehouses,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
+            'note'         => 'nullable|string',
+            'rows'         => 'required|array|min:1',
+        ]);
+ 
+        if (!auth()->user()->canAccessWarehouse($request->warehouse_id)) {
+            abort(403, 'Bạn không có quyền truy cập kho này');
+        }
+ 
+        $errors = [];
+        $items  = [];
+        $seen   = [];
+ 
+        // Nạp sẵn toàn bộ mã hợp lệ trong 1 query
+        $inputCodes = collect($request->rows)
+            ->map(fn($row) => strtoupper(trim($row['part_code'] ?? '')))
+            ->filter()
+            ->unique()
+            ->values();
+ 
+        $parts = Part::whereIn(DB::raw('UPPER(part_code)'), $inputCodes)
+            ->get()
+            ->keyBy(fn($part) => strtoupper($part->part_code));
+ 
+        // Nạp sẵn tồn kho của các mã này
+        $stocks = WarehouseParts::where('warehouse_id', $request->warehouse_id)
+            ->whereIn('part_id', $parts->pluck('id'))
+            ->pluck('qty', 'part_id');
+ 
+        foreach ($request->rows as $index => $row) {
+            $line = $index + 2;   // dòng 1 là tiêu đề
+            $code = strtoupper(trim($row['part_code'] ?? ''));
+            $qty  = $row['qty'] ?? null;
+ 
+            if ($code === '') {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => '',
+                    'message'   => 'Thiếu mã linh kiện',
+                ];
+                continue;
+            }
+ 
+            if (!is_numeric($qty) || (int) $qty < 1) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Số lượng phải là số nguyên lớn hơn 0',
+                ];
+                continue;
+            }
+ 
+            if (!$parts->has($code)) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Mã linh kiện chưa có trong hệ thống',
+                ];
+                continue;
+            }
+ 
+            $partId = $parts[$code]->id;
+            $qty    = (int) $qty;
+ 
+            // Mã lặp trong file → cộng dồn
+            if (isset($seen[$partId])) {
+                $newQty = $items[$seen[$partId]]['qty'] + $qty;
+                $stock  = $stocks[$partId] ?? 0;
+ 
+                if ($newQty > $stock) {
+                    $errors[] = [
+                        'row'       => $line,
+                        'part_code' => $code,
+                        'message'   => "Cộng dồn vượt tồn kho (cần {$newQty}, còn {$stock})",
+                    ];
+                    continue;
+                }
+ 
+                $items[$seen[$partId]]['qty'] = $newQty;
+ 
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Mã bị lặp trong file — đã cộng dồn số lượng',
+                    'type'      => 'warning',
+                ];
+                continue;
+            }
+ 
+            // Kiểm tra tồn kho
+            $stock = $stocks[$partId] ?? 0;
+ 
+            if ($stock < $qty) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => $stock === 0
+                        ? 'Không còn tồn trong kho'
+                        : "Không đủ tồn kho (cần {$qty}, còn {$stock})",
+                ];
+                continue;
+            }
+ 
+            $seen[$partId] = count($items);
+            $items[] = [
+                'part_id' => $partId,
+                'qty'     => $qty,
+            ];
+        }
+ 
+        if (empty($items)) {
+            return response()->json([
+                'message'    => 'Không có dòng hợp lệ nào để xuất kho',
+                'total_rows' => count($request->rows),
+                'success'    => 0,
+                'failed'     => count($errors),
+                'errors'     => $errors,
+            ], 422);
+        }
+ 
+        $issue = DB::transaction(function () use ($request, $items) {
+            $issue = StockIssue::create([
+                'warehouse_id' => $request->warehouse_id,
+                'job_order_id' => $request->job_order_id,
+                'issue_no'     => $this->generateIssueNo(),
+                'note'         => $request->note,
+                'status'       => 'Mới Tạo',
+                'created_by'   => auth()->id(),
+                'created_at'   => now(),
+            ]);
+ 
+            foreach ($items as $item) {
+                StockIssueItem::create([
+                    'stock_issue_id' => $issue->id,
+                    'part_id'        => $item['part_id'],
+                    'qty'            => $item['qty'],
+                ]);
+            }
+ 
+            return $issue;
+        });
+ 
+        $failed = collect($errors)->where('type', '!=', 'warning')->count();
+ 
+        return response()->json([
+            'message'  => $failed > 0
+                ? "Đã tạo phiếu {$issue->issue_no} với " . count($items) . " linh kiện, {$failed} dòng bị bỏ qua"
+                : "Đã tạo phiếu {$issue->issue_no} với " . count($items) . " linh kiện",
+            'issue_no'   => $issue->issue_no,
+            'total_rows' => count($request->rows),
+            'success'    => count($items),
+            'failed'     => $failed,
+            'data'       => $issue->load('items.part'),
+            'errors'     => $errors,
+        ], 201);
     }
 }

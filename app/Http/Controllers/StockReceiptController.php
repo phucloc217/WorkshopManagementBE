@@ -176,17 +176,23 @@ class StockReceiptController extends Controller
             'rows.*.qty'        => 'required|integer|min:1',
         ]);
 
+        if (!auth()->user()->canAccessWarehouse($request->warehouse_id)) {
+            abort(403, 'Bạn không có quyền truy cập kho này');
+        }
+
         $errors = [];
-        $items = [];
+        $items  = [];
 
         foreach ($request->rows as $index => $row) {
-            $part = \App\Models\Part::where('part_code', $row['part_code'])->first();
+            $code = strtoupper(trim($row['part_code']));
+
+            $part = \App\Models\Part::whereRaw('UPPER(part_code) = ?', [$code])->first();
 
             if (!$part) {
                 $errors[] = [
-                    'row'     => $index + 2, // +2 vì dòng 1 là header
-                    'part_code' => $row['part_code'],
-                    'message' => "Không tìm thấy linh kiện {$row['part_code']}"
+                    'row'       => $index + 2, // +2 vì dòng 1 là header
+                    'part_code' => $code,
+                    'message'   => 'Mã linh kiện chưa có trong hệ thống',
                 ];
                 continue;
             }
@@ -199,8 +205,11 @@ class StockReceiptController extends Controller
 
         if (empty($items)) {
             return response()->json([
-                'message' => 'Không có dòng hợp lệ nào để nhập',
-                'errors'  => $errors
+                'message'    => 'Không có dòng hợp lệ nào để nhập',
+                'total_rows' => count($request->rows),
+                'success'    => 0,
+                'failed'     => count($errors),
+                'errors'     => $errors,
             ], 422);
         }
 
@@ -227,10 +236,18 @@ class StockReceiptController extends Controller
             return $receipt;
         });
 
+        $failed = count($errors);
+
         return response()->json([
-            'message' => 'Import thành công',
-            'data'    => $receipt->load('items.part'),
-            'errors'  => $errors
+            'message'    => $failed > 0
+                ? "Đã tạo phiếu {$receipt->receipt_no} với " . count($items) . " linh kiện, {$failed} dòng bị bỏ qua"
+                : "Đã tạo phiếu {$receipt->receipt_no} với " . count($items) . " linh kiện",
+            'receipt_no' => $receipt->receipt_no,
+            'total_rows' => count($request->rows),
+            'success'    => count($items),
+            'failed'     => $failed,
+            'data'       => $receipt->load('items.part'),
+            'errors'     => $errors,
         ], 201);
     }
 }

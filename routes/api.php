@@ -35,6 +35,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/vehicle/by-motor-number/{motor_number}', [\App\Http\Controllers\VehicleController::class, 'findByMotorNumber']);
     Route::post('stock-receipts/import', [\App\Http\Controllers\StockReceiptController::class, 'import']);
     Route::get('inventory/history', [\App\Http\Controllers\WarehouseInventoryController::class, 'importExportHistory']);
+    Route::post('stock-issues/import', [\App\Http\Controllers\StockIssueController::class, 'import']);
     Route::apiResource('stock-issues', \App\Http\Controllers\StockIssueController::class);
     Route::post('stock-issues/{stockIssue}/confirm', [\App\Http\Controllers\StockIssueController::class, 'confirm']);
     Route::get('job-order-parts', [\App\Http\Controllers\StockIssueController::class, 'getJobOrderParts']);
@@ -52,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
         [\App\Http\Controllers\JobOrderController::class, 'finish']
     );
     Route::get('inventory/parts-to-import', [\App\Http\Controllers\WarehouseInventoryController::class, 'partsToImport']);
+    Route::post('stock-transfers/import', [\App\Http\Controllers\StockTransferController::class, 'import']);
     Route::apiResource('stock-transfers', \App\Http\Controllers\StockTransferController::class);
     Route::post('stock-transfers/{stockTransfer}/transfer', [\App\Http\Controllers\StockTransferController::class, 'transfer']);
     Route::post('stock-transfers/{stockTransfer}/receive', [\App\Http\Controllers\StockTransferController::class, 'receive']);
@@ -77,4 +79,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'userDataAccess']);
     Route::post('users/{user}/data-access', [\App\Http\Controllers\UserController::class, 'syncDataAccess']);
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index']);
+    Route::patch('job-parts/{jobPart}/actual-use', [\App\Http\Controllers\JobPartController::class, 'updateActualUse']);
+    Route::apiResource('accessories', \App\Http\Controllers\AccessoryController::class)->except(['show']);
+    Route::apiResource('issues', \App\Http\Controllers\IssueController::class)->except(['show']);
 });

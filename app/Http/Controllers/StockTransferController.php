@@ -7,6 +7,7 @@ use App\Models\StockTransferItem;
 use App\Models\WarehouseParts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Part;
 
 class StockTransferController extends Controller
 {
@@ -211,5 +212,175 @@ class StockTransferController extends Controller
         $seq = $last ? (int) substr($last, -4) + 1 : 1;
 
         return $prefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
+    }
+    /**
+     * Import danh sách linh kiện từ Excel để tạo phiếu luân chuyển.
+     *
+     * Kiểm tra tồn kho của KHO NGUỒN.
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'from_warehouse_id' => 'required|exists:warehouses,id',
+            'to_warehouse_id'   => 'required|exists:warehouses,id|different:from_warehouse_id',
+            'document'          => 'nullable|string',
+            'transfer_reason'   => 'nullable|string',
+            'note'              => 'nullable|string',
+            'rows'              => 'required|array|min:1',
+        ]);
+
+        $user = auth()->user();
+
+        // Chỉ kho nguồn mới được lập phiếu chuyển
+        if (!$user->canAccessWarehouse($request->from_warehouse_id)) {
+            abort(403, 'Bạn không có quyền truy cập kho nguồn');
+        }
+
+        $errors = [];
+        $items  = [];
+        $seen   = [];
+
+        // Nạp sẵn toàn bộ mã hợp lệ trong 1 query
+        $inputCodes = collect($request->rows)
+            ->map(fn($row) => strtoupper(trim($row['part_code'] ?? '')))
+            ->filter()
+            ->unique()
+            ->values();
+
+        $parts = Part::whereIn(DB::raw('UPPER(part_code)'), $inputCodes)
+            ->get()
+            ->keyBy(fn($part) => strtoupper($part->part_code));
+
+        // Nạp sẵn tồn kho của kho nguồn
+        $stocks = WarehouseParts::where('warehouse_id', $request->from_warehouse_id)
+            ->whereIn('part_id', $parts->pluck('id'))
+            ->pluck('qty', 'part_id');
+
+        foreach ($request->rows as $index => $row) {
+            $line = $index + 2;   // dòng 1 là tiêu đề
+            $code = strtoupper(trim($row['part_code'] ?? ''));
+            $qty  = $row['qty'] ?? null;
+
+            if ($code === '') {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => '',
+                    'message'   => 'Thiếu mã linh kiện',
+                ];
+                continue;
+            }
+
+            if (!is_numeric($qty) || (int) $qty < 1) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Số lượng phải là số nguyên lớn hơn 0',
+                ];
+                continue;
+            }
+
+            if (!$parts->has($code)) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Mã linh kiện chưa có trong hệ thống',
+                ];
+                continue;
+            }
+
+            $partId = $parts[$code]->id;
+            $qty    = (int) $qty;
+            $stock  = $stocks[$partId] ?? 0;
+
+            // Mã lặp trong file → cộng dồn
+            if (isset($seen[$partId])) {
+                $newQty = $items[$seen[$partId]]['qty'] + $qty;
+
+                if ($newQty > $stock) {
+                    $errors[] = [
+                        'row'       => $line,
+                        'part_code' => $code,
+                        'message'   => "Cộng dồn vượt tồn kho nguồn (cần {$newQty}, còn {$stock})",
+                    ];
+                    continue;
+                }
+
+                $items[$seen[$partId]]['qty'] = $newQty;
+
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => 'Mã bị lặp trong file — đã cộng dồn số lượng',
+                    'type'      => 'warning',
+                ];
+                continue;
+            }
+
+            if ($stock < $qty) {
+                $errors[] = [
+                    'row'       => $line,
+                    'part_code' => $code,
+                    'message'   => $stock === 0
+                        ? 'Không còn tồn trong kho nguồn'
+                        : "Không đủ tồn kho nguồn (cần {$qty}, còn {$stock})",
+                ];
+                continue;
+            }
+
+            $seen[$partId] = count($items);
+            $items[] = [
+                'part_id' => $partId,
+                'qty'     => $qty,
+            ];
+        }
+
+        if (empty($items)) {
+            return response()->json([
+                'message'    => 'Không có dòng hợp lệ nào để luân chuyển',
+                'total_rows' => count($request->rows),
+                'success'    => 0,
+                'failed'     => count($errors),
+                'errors'     => $errors,
+            ], 422);
+        }
+
+        $transfer = DB::transaction(function () use ($request, $items) {
+            $transfer = StockTransfer::create([
+                'from_warehouse_id' => $request->from_warehouse_id,
+                'to_warehouse_id'   => $request->to_warehouse_id,
+                'transfer_no'       => $this->generateTransferNo(),
+                'document'          => $request->document,
+                'transfer_reason'   => $request->transfer_reason,
+                'note'              => $request->note,
+                'status'            => 'Mới Tạo',
+                'created_by'        => auth()->id(),
+                'created_at'        => now(),
+            ]);
+
+            foreach ($items as $item) {
+                StockTransferItem::create([
+                    'stock_transfer_id' => $transfer->id,
+                    'part_id'           => $item['part_id'],
+                    'qty'               => $item['qty'],
+                    'qty_received'      => 0,
+                ]);
+            }
+
+            return $transfer;
+        });
+
+        $failed = collect($errors)->where('type', '!=', 'warning')->count();
+
+        return response()->json([
+            'message'     => $failed > 0
+                ? "Đã tạo phiếu {$transfer->transfer_no} với " . count($items) . " linh kiện, {$failed} dòng bị bỏ qua"
+                : "Đã tạo phiếu {$transfer->transfer_no} với " . count($items) . " linh kiện",
+            'transfer_no' => $transfer->transfer_no,
+            'total_rows'  => count($request->rows),
+            'success'     => count($items),
+            'failed'      => $failed,
+            'data'        => $transfer->load('items.part'),
+            'errors'      => $errors,
+        ], 201);
     }
 }
