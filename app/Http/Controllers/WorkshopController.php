@@ -12,6 +12,8 @@ class WorkshopController extends Controller
     /**
      * Display a listing of the resource.
      */
+
+    //hàm index để lấy danh sách các chi nhánh (workshop) dựa trên các điều kiện lọc từ request. Nó kiểm tra quyền truy cập của người dùng và áp dụng các bộ lọc như tên chi nhánh, trạng thái hoạt động và khả năng sửa chữa. Kết quả được sắp xếp theo tên và trả về dưới dạng JSON.
     public function index(Request $request)
     {
         $user = auth()->user();
