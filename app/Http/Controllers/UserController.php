@@ -8,6 +8,8 @@ use App\Http\Requests\UserRequest;
 use App\Http\Requests\UpdatePasswordRequest;
 use App\Http\Requests\ChangeUserStatusRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
@@ -179,5 +181,87 @@ class UserController extends Controller
         $user->warehouses()->sync($request->warehouse_ids ?? []);
 
         return response()->json(['code' => 200, 'message' => 'Cập nhật quyền dữ liệu thành công']);
+    }
+    /**
+     * Thông tin tài khoản đang đăng nhập
+     */
+    public function me()
+    {
+        $user = auth()->user()->load('workshop:id,name');
+
+        return response()->json([
+            'code' => 200,
+            'data' => [
+                'id'       => $user->id,
+                'name'     => $user->name,
+                'phone'    => $user->phone,
+                'workshop' => $user->workshop,
+                'roles'    => $user->getRoleNames(),
+                'created_at' => $user->created_at,
+            ],
+        ]);
+    }
+
+    /**
+     * Cập nhật thông tin cá nhân
+     *
+     * Chỉ cho sửa họ tên. Số điện thoại là tài khoản đăng nhập nên
+     * phải do quản trị viên đổi để tránh mất quyền truy cập.
+     */
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $user = auth()->user();
+        $user->update(['name' => $request->name]);
+
+        return response()->json([
+            'code'    => 200,
+            'message' => 'Cập nhật thông tin thành công',
+            'data'    => [
+                'name'  => $user->name,
+                'phone' => $user->phone,
+            ],
+        ]);
+    }
+
+    /**
+     * Tự đổi mật khẩu — bắt buộc nhập mật khẩu hiện tại
+     */
+    public function changeMyPassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password'         => ['required', 'string', 'confirmed', Password::min(6)],
+        ], [
+            'password.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'password.min'       => 'Mật khẩu phải có ít nhất 6 ký tự',
+        ]);
+
+        $user = auth()->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'Mật khẩu hiện tại không đúng',
+            ], 422);
+        }
+
+        if (Hash::check($request->password, $user->password)) {
+            return response()->json([
+                'message' => 'Mật khẩu mới phải khác mật khẩu hiện tại',
+            ], 422);
+        }
+
+        $user->update(['password' => Hash::make($request->password)]);
+
+        // Thu hồi toàn bộ token cũ, buộc đăng nhập lại trên mọi thiết bị
+        $user->tokens()->delete();
+
+        return response()->json([
+            'code'    => 200,
+            'message' => 'Đổi mật khẩu thành công, vui lòng đăng nhập lại',
+        ]);
     }
 }
