@@ -21,5 +21,9 @@ class DatabaseSeeder extends Seeder
             'name' => 'Test User',
             'email' => 'test@example.com',
         ]);
+        \App\Models\Customer::firstOrCreate(
+            ['phone' => '0000'],
+            ['name'  => 'Tài Xế Không Xác Định']
+        );
     }
 }
